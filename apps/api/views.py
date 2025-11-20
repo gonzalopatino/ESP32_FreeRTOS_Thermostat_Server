@@ -6,10 +6,62 @@ import json
 from .models import TelemetrySnapshot
 from django.utils.dateparse import parse_datetime
 
+from django.utils.timezone import now
+from django.db.models import Q
+
+
 logger = logging.getLogger(__name__)
 
 API_KEY = "super-secret-token"  # Later we move this to settings
 
+
+def recent_telemetry(request):
+    """
+    Return recent telemetry snapshots as JSON.
+    Supports:
+        - ?Limit=50      how many records
+        - ?device_id=..     filter by device
+    """
+    try:
+        limit = int (request.GET.get("limit", "50"))
+    except ValueError:
+        limit = 50
+
+    # Hard cap so someone cannot ask for a million rows
+    limit = max(1, min(limit, 500))
+
+    device_id = request.GET.get("device_id")
+
+    qs = TelemetrySnapshot.objects.all().order_by("-server_ts")
+    if device_id:
+        qs = qs.filter(device_id=device_id)
+    
+    qs = qs [:limit]
+
+    data = []
+
+    for s in qs:
+        data.append(
+            {
+                "id": s.id,
+                "device_id": s.device_id,
+                "mode": s.mode,
+                "temp_inside_c": s.temp_inside_c,
+                "setpoint_c": s.setpoint_c,
+                "temp_outside_c": s.temp_outside_c,
+                "humidity_percent": s.humidity_percent,
+                "device_ts": s.device_ts.isoformat() if s.device_ts else None,
+                "server_ts": s.server_ts.isoformat() if s.server_ts else None,
+            }
+        )
+    return JsonResponse (
+        {
+            "count" : len(data),
+            "device_id": device_id,
+            "data": data,
+
+        }
+    )
 
 @csrf_exempt
 def ingest_telemetry(request):
