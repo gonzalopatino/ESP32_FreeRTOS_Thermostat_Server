@@ -3,6 +3,9 @@ from django.views.decorators.csrf import csrf_exempt
 import logging
 import json
 
+from .models import TelemetrySnapshot
+from django.utils.dateparse import parse_datetime
+
 logger = logging.getLogger(__name__)
 
 API_KEY = "super-secret-token"  # Later we move this to settings
@@ -37,13 +40,33 @@ def ingest_telemetry(request):
     # Log for now instead of saving to DB
     logger.info("Telemetry received: %s", data)
 
-    # Successful response
+    # Parse optional timestamp
+    device_ts_raw = data.get("timestamp")
+    device_ts = None
+    if device_ts_raw:
+        device_ts = parse_datetime(device_ts_raw)
+
+    # Save to DB
+    snapshot = TelemetrySnapshot.objects.create(
+        device_id=data["device_id"],
+        mode=data["mode"],
+        setpoint_c=float(data["setpoint_c"]),
+        temp_inside_c=float(data["temp_inside_c"]),
+        temp_outside_c=float(data.get("temp_outside_c")) if data.get("temp_outside_c") else None,
+        humidity_percent=float(data.get("humidity_percent")) if data.get("humidity_percent") else None,
+        device_ts=device_ts,
+        raw_payload=data,
+    )
+
     return JsonResponse(
         {
             "status": "ok",
-            "echo": data,
+            "id": snapshot.id,
+            "server_ts": snapshot.server_ts.isoformat(),
         }
     )
+
+    
 
 
 def ping(request):
