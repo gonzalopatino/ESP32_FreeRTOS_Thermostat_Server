@@ -16,72 +16,75 @@ API_KEY = "super-secret-token"  # Later we move this to settings
 
 
 def recent_telemetry(request):
-    """
-    Return recent telemetry snapshots as JSON.
-    Supports:
-        - ?Limit=50      how many records
-        - ?device_id=..     filter by device
-    """
     try:
-        limit = int (request.GET.get("limit", "50"))
+        limit = int(request.GET.get("limit", "50"))
     except ValueError:
         limit = 50
-
-    # Hard cap so someone cannot ask for a million rows
     limit = max(1, min(limit, 500))
 
     device_id = request.GET.get("device_id")
 
     qs = TelemetrySnapshot.objects.all().order_by("-server_ts")
-    if device_id:
+    if device_id is None and qs.exists():
+        device_id = qs.first().device_id
         qs = qs.filter(device_id=device_id)
-    
-    qs = qs [:limit]
+
+    qs = qs[:limit]
 
     data = []
-
     for s in qs:
+        raw = s.raw_payload or {}
+        device_ts_local = raw.get("timestamp")
+        device_ts_utc = s.device_ts
         data.append(
             {
                 "id": s.id,
                 "device_id": s.device_id,
                 "mode": s.mode,
                 "temp_inside_c": s.temp_inside_c,
-                "setpoint_c": s.setpoint_c,
                 "temp_outside_c": s.temp_outside_c,
+                "setpoint_c": s.setpoint_c,
+                "hysteresis_c": s.hysteresis_c,
+                "output": s.output,
                 "humidity_percent": s.humidity_percent,
-                "device_ts": s.device_ts.isoformat() if s.device_ts else None,
+
+                # what the ESP32 actually sent, with its timezone offset
+                "device_ts": device_ts_local or (
+                    device_ts_utc.isoformat() if device_ts_utc else None
+                ),
+
+                # if you want to keep UTC around for dashboards / SQL
+                "device_ts_utc": device_ts_utc.isoformat() if device_ts_utc else None,
+
                 "server_ts": s.server_ts.isoformat() if s.server_ts else None,
             }
         )
-    return JsonResponse (
+
+    return JsonResponse(
         {
-            "count" : len(data),
+            "count": len(data),
             "device_id": device_id,
             "data": data,
-
         }
     )
 
+
+
 @csrf_exempt
 def ingest_telemetry(request):
-    # Only POST allowed
     if request.method != "POST":
         return HttpResponseBadRequest("Only POST allowed")
 
-    # Header-based auth
     key = request.headers.get("X-API-Key")
     if key != API_KEY:
         return HttpResponseBadRequest("Invalid or missing API key")
 
-    # Parse JSON body
     try:
         body = request.body.decode("utf-8")
         data = json.loads(body)
     except Exception as e:
         return HttpResponseBadRequest(f"Invalid JSON: {e}")
 
-    # Required fields
     required = ["device_id", "mode", "setpoint_c", "temp_inside_c"]
     missing = [field for field in required if field not in data]
     if missing:
@@ -89,23 +92,25 @@ def ingest_telemetry(request):
             f"Missing required fields: {', '.join(missing)}"
         )
 
-    # Log for now instead of saving to DB
-    logger.info("Telemetry received: %s", data)
+    # Optional fields from CONTROL
+    temp_outside_c = data.get("temp_outside_c")
+    hysteresis_c = data.get("hysteresis_c")
+    output = data.get("output")  # "HEAT_ON", "COOL_ON", "OFF", etc.
+    humidity = data.get("humidity_percent")  # will normally be absent
 
-    # Parse optional timestamp
+    # Optional device timestamp
     device_ts_raw = data.get("timestamp")
-    device_ts = None
-    if device_ts_raw:
-        device_ts = parse_datetime(device_ts_raw)
+    device_ts = parse_datetime(device_ts_raw) if device_ts_raw else None
 
-    # Save to DB
     snapshot = TelemetrySnapshot.objects.create(
         device_id=data["device_id"],
         mode=data["mode"],
-        setpoint_c=float(data["setpoint_c"]),
         temp_inside_c=float(data["temp_inside_c"]),
-        temp_outside_c=float(data.get("temp_outside_c")) if data.get("temp_outside_c") else None,
-        humidity_percent=float(data.get("humidity_percent")) if data.get("humidity_percent") else None,
+        temp_outside_c=float(temp_outside_c) if temp_outside_c is not None else None,
+        setpoint_c=float(data["setpoint_c"]),
+        hysteresis_c=float(hysteresis_c) if hysteresis_c is not None else None,
+        output=output or "",
+        humidity_percent=float(humidity) if humidity is not None else None,
         device_ts=device_ts,
         raw_payload=data,
     )
