@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+
+# Django stuff
+*.sqlite3
+staticfiles/
+media/
+
+# Environment variables
+.env
+*.env
+
+# IDE noise
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Byte-compiled / cached
+*.pyc
+.pytest_cache/
+
+# Migrations you want to avoid committing initially (optional)
+# */migrations/*
+
+# System stuff
+.DS_Store
+Thumbs.db

@@ -8,11 +8,14 @@ from django.utils.dateparse import parse_datetime
 
 from django.utils.timezone import now
 from django.db.models import Q
+import os
+from dotenv import load_dotenv
 
 
 logger = logging.getLogger(__name__)
 
-API_KEY = "super-secret-token"  # Later we move this to settings
+API_KEY = os.getenv("TELEMETRY_API_KEY")
+
 
 
 def recent_telemetry(request):
