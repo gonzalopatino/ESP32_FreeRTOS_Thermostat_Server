@@ -1,7 +1,57 @@
 from django.db import models
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+import hashlib
 
 
-from django.db import models
+
+
+
+User = get_user_model()
+
+
+
+
+class Device(models.Model):
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="devices",
+    )
+    serial_number = models.CharField(max_length=64, unique=True)
+    name = models.CharField(max_length=128, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        label = self.name or self.serial_number
+        return f"{label} (owner={self.owner.username})"
+
+
+class DeviceApiKey(models.Model):
+    device = models.ForeignKey(
+        Device,
+        on_delete=models.CASCADE,
+        related_name="api_keys",
+    )
+    key_hash = models.CharField(max_length=128)  # store hex digest, not raw key
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["device", "is_active", "expires_at"]),
+        ]
+
+    def __str__(self):
+        return f"API key for {self.device.serial_number} (active={self.is_active})"
+
+    @staticmethod
+    def hash_key(raw_key: str) -> str:
+        return hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+
+    def is_valid(self) -> bool:
+        return self.is_active and self.expires_at > timezone.now()
 
 
 class TelemetrySnapshot(models.Model):
