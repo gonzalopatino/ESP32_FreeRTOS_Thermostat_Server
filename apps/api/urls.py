@@ -17,6 +17,8 @@ urlpatterns = [
     #Device Key Management
     path("devices/<int:device_id>/keys/",views.list_device_keys, name="list_device_keys",),
     path("devices/<int:device_id>/keys/<int:key_id>/revoke/",views.revoke_device_key,name="revoke_device_key",),
+    path("devices/<int:device_id>/keys/rotate/", views.rotate_device_key, name="rotate_device_key",
+    ),
 
     # Telemetry
     path("telemetry/ingest/", views.ingest_telemetry, name="ingest-telemetry"),

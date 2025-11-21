@@ -549,7 +549,7 @@ def register_device(request):
         }
     )
 
-
+#Key managament-------------
 @csrf_exempt
 @api_login_required
 def list_device_keys(request, device_id: int):
@@ -644,6 +644,65 @@ def revoke_device_key(request, device_id, key_id):
                 else None,
                 "is_active": api_key_obj.is_active,
             },
+        }
+    )
+
+
+
+@csrf_exempt
+@require_POST
+@api_login_required
+def rotate_device_key(request, device_id):
+    """
+    Rotate the API key for a device owned by the current user.
+
+    URL:
+        POST /api/devices/<device_id>/keys/rotate/
+
+    Behavior:
+        - Ensures the device belongs to request.user
+        - Marks all existing keys as inactive
+        - Creates a new key valid for 1 year
+        - Returns the new raw key (shown once)
+
+    Response 200:
+    {
+        "device": {
+            "id": 1,
+            "serial_number": "SN-ESP32-THERMO-001",
+            "name": "Garage Room Thermostat",
+            "created_at": "...",
+        },
+        "api_key": "RAW-KEY-STRING-HERE",
+        "expires_at": "2026-11-21T05:51:58.380971+00:00"
+    }
+    """
+    # Ensure the device exists and belongs to this user
+    device = Device.objects.filter(id=device_id, owner=request.user).first()
+    if device is None:
+        return JsonResponse(
+            {"detail": "Device not found or not owned by this user."},
+            status=404,
+        )
+
+    # Deactivate all existing keys for this device
+    device.api_keys.update(is_active=False)
+
+    # Create a new active key valid for 1 year
+    api_key_obj, raw_key = DeviceApiKey.create_for_device(device, ttl_days=365)
+
+    return JsonResponse(
+        {
+            "device": {
+                "id": device.id,
+                "serial_number": device.serial_number,
+                "name": device.name,
+                "created_at": device.created_at.isoformat(),
+            },
+            "api_key": raw_key,  # only time you see this value
+            "expires_at": api_key_obj.expires_at.isoformat()
+            if api_key_obj.expires_at
+            else None,
         }
     )
 
