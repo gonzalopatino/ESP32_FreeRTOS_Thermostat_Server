@@ -24,6 +24,90 @@ from dotenv import load_dotenv
 from .models import TelemetrySnapshot, Device, DeviceApiKey
 
 
+
+
+#Helper Functions:
+
+def api_login_required(view_func):
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({"detail": "Authentication required"}, status=401)
+        return view_func(request, *args, **kwargs)
+    return _wrapped
+
+def authenticate_device_from_header(request):
+    """
+    Authenticate a device using an Authorization header of the form:
+        Authorization: Device <serial_number>:<api_key>
+
+    Returns (device, error_response):
+      - (Device instance, None) on success
+      - (None, JsonResponse) on failure
+    """
+    auth_header = request.META.get("HTTP_AUTHORIZATION", "").strip()
+    prefix = "Device "
+
+    if not auth_header.startswith(prefix):
+        return None, JsonResponse(
+            {"detail": "Missing or invalid Authorization header"},
+            status=401,
+        )
+
+    token = auth_header[len(prefix) :].strip()
+    try:
+        serial, raw_key = token.split(":", 1)
+    except ValueError:
+        return None, JsonResponse(
+            {"detail": "Invalid device credentials format"},
+            status=401,
+        )
+
+    serial = serial.strip()
+    raw_key = raw_key.strip()
+
+    if not serial or not raw_key:
+        return None, JsonResponse(
+            {"detail": "Invalid device credentials format"},
+            status=401,
+        )
+
+    device = Device.objects.filter(serial_number=serial).first()
+    if device is None:
+        return None, JsonResponse(
+            {"detail": "Unknown device serial"},
+            status=403,
+        )
+
+    key_hash = DeviceApiKey.hash_key(raw_key)
+    api_key_obj = (
+        DeviceApiKey.objects.filter(
+            device=device,
+            key_hash=key_hash,
+            is_active=True,
+        )
+        .order_by("-expires_at")
+        .first()
+    )
+
+    if api_key_obj is None or not api_key_obj.is_valid():
+        return None, JsonResponse(
+            {"detail": "Invalid or expired device key"},
+            status=403,
+        )
+
+    # All good
+    return device, None
+
+
+
+
+
+
+
+
+
+
 logger = logging.getLogger(__name__)
 
 API_KEY = os.getenv("TELEMETRY_API_KEY")
@@ -147,14 +231,7 @@ def logout_user(request):
 
 
 
-#Helper function
-def api_login_required(view_func):
-    @wraps(view_func)
-    def _wrapped(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({"detail": "Authentication required"}, status=401)
-        return view_func(request, *args, **kwargs)
-    return _wrapped
+
 
 
 
@@ -214,21 +291,40 @@ def recent_telemetry(request):
 
 
 @csrf_exempt
+@require_POST
 def ingest_telemetry(request):
-    if request.method != "POST":
-        return HttpResponseBadRequest("Only POST allowed")
+    """
+    Ingest telemetry from an authenticated device.
 
-    key = request.headers.get("X-API-Key")
-    if key != API_KEY:
-        return HttpResponseBadRequest("Invalid or missing API key")
+    Devices must send:
+        Authorization: Device <serial_number>:<api_key>
 
+    Body (JSON) example:
+    {
+        "mode": "AUTO",
+        "setpoint_c": 22.0,
+        "temp_inside_c": 25.5,
+        "temp_outside_c": 5.0,
+        "hysteresis_c": 0.5,
+        "humidity_percent": 40.0,
+        "output": "HEAT_ON",
+        "timestamp": "2025-11-21T06:30:00Z"
+    }
+    """
+    # 1) Authenticate device from Authorization header
+    device, error_response = authenticate_device_from_header(request)
+    if error_response is not None:
+        return error_response
+
+    # 2) Parse JSON body
     try:
         body = request.body.decode("utf-8")
-        data = json.loads(body)
+        data = json.loads(body or "{}")
     except Exception as e:
         return HttpResponseBadRequest(f"Invalid JSON: {e}")
 
-    required = ["device_id", "mode", "setpoint_c", "temp_inside_c"]
+    # 3) Validate required fields (device_id is no longer accepted from client)
+    required = ["mode", "setpoint_c", "temp_inside_c"]
     missing = [field for field in required if field not in data]
     if missing:
         return HttpResponseBadRequest(
@@ -239,14 +335,15 @@ def ingest_telemetry(request):
     temp_outside_c = data.get("temp_outside_c")
     hysteresis_c = data.get("hysteresis_c")
     output = data.get("output")  # "HEAT_ON", "COOL_ON", "OFF", etc.
-    humidity = data.get("humidity_percent")  # will normally be absent
+    humidity = data.get("humidity_percent")  # may be absent
 
     # Optional device timestamp
     device_ts_raw = data.get("timestamp")
     device_ts = parse_datetime(device_ts_raw) if device_ts_raw else None
 
+    # 4) Create snapshot; enforce device_id from authenticated device
     snapshot = TelemetrySnapshot.objects.create(
-        device_id=data["device_id"],
+        device_id=device.serial_number,
         mode=data["mode"],
         temp_inside_c=float(data["temp_inside_c"]),
         temp_outside_c=float(temp_outside_c) if temp_outside_c is not None else None,
@@ -258,13 +355,20 @@ def ingest_telemetry(request):
         raw_payload=data,
     )
 
+    logger.info(
+        "Ingested telemetry from device %s (snapshot id=%s)",
+        device.serial_number,
+        snapshot.id,
+    )
+
     return JsonResponse(
         {
             "status": "ok",
             "id": snapshot.id,
-            "server_ts": snapshot.server_ts.isoformat(),
+            "server_ts": snapshot.server_ts.isoformat() if snapshot.server_ts else None,
         }
     )
+
 
 def _parse_bool(value: str) -> bool:
     if value is None:
