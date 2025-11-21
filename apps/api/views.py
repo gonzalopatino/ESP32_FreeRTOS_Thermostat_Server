@@ -1,7 +1,12 @@
+import json
+from functools import wraps
+
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.utils.timezone import now
+
 import logging
-import json
 
 from .models import TelemetrySnapshot
 from django.utils.dateparse import parse_datetime
@@ -12,9 +17,23 @@ import os
 from dotenv import load_dotenv
 from datetime import timedelta
 
+from .models import TelemetrySnapshot, Device, DeviceApiKey
+
+
 logger = logging.getLogger(__name__)
 
 API_KEY = os.getenv("TELEMETRY_API_KEY")
+
+
+
+#Helper function
+def api_login_required(view_func):
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({"detail": "Authentication required"}, status=401)
+        return view_func(request, *args, **kwargs)
+    return _wrapped
 
 
 
@@ -228,3 +247,82 @@ def ping(request):
             "message": "api app wired",
         }
     )
+
+
+@csrf_exempt
+@require_POST
+@api_login_required
+def register_device(request):
+    """
+    Register a thermostat to the logged-in user, or rotate its API key.
+
+    Body (JSON):
+    {
+        "serial_number": "SN-123...",
+        "name": "Living Room"    # optional
+    }
+
+    Responses:
+    - 200 with device + api_key if success
+    - 400 if serial missing or already claimed by another user
+    - 401 if not authenticated
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return HttpResponseBadRequest("Invalid JSON")
+
+    serial = (payload.get("serial_number") or "").strip()
+    name = (payload.get("name") or "").strip()
+
+    if not serial:
+        return HttpResponseBadRequest("Field 'serial_number' is required")
+
+    # Truncate to our DB max length just in case
+    serial = serial[:64]
+
+    # Check if a device with this serial already exists
+    existing = Device.objects.filter(serial_number=serial).first()
+
+    if existing and existing.owner != request.user:
+        return JsonResponse(
+            {"detail": "This device serial is already registered to another user."},
+            status=400,
+        )
+
+    if existing is None:
+        # New device, claim it for this user
+        device = Device.objects.create(
+            owner=request.user,
+            serial_number=serial,
+            name=name,
+        )
+    else:
+        # Already owned by this user: optionally update name
+        device = existing
+        if name:
+            device.name = name
+            device.save(update_fields=["name"])
+
+    # Deactivate any existing keys for this device (key rotation)
+    device.api_keys.update(is_active=False)
+
+    # Create a new key valid for 1 year
+    api_key_obj, raw_key = DeviceApiKey.create_for_device(device, ttl_days=365)
+
+    return JsonResponse(
+        {
+            "device": {
+                "id": device.id,
+                "serial_number": device.serial_number,
+                "name": device.name,
+                "owner": device.owner.username,
+                "created_at": device.created_at.isoformat(),
+            },
+            "api_key": raw_key,  # shown once to the caller
+            "expires_at": api_key_obj.expires_at.isoformat(),
+        }
+    )
+
+
+
