@@ -45,22 +45,44 @@ def register_page(request):
     return render(request, "registration/register.html", {"form": form})
 
 @login_required
+def logout_view(request):
+    """
+    HTML logout for dashboard users.
+
+    Logs out the current user and redirects to the login page.
+    """
+    logout(request)
+    # assumes your login URL is named "login"
+    return redirect("login")
+
+
+@login_required
 def dashboard_devices(request):
     """
-    Simple HTML dashboard page listing devices owned by the current user.
+    Simple HTML dashboard listing the current user's devices.
+    One row per device: serial, name, created_at, and key info.
     """
-    devices = (
-        Device.objects.filter(owner=request.user)
-        .order_by("created_at")
-    )
+    devices = Device.objects.filter(owner=request.user).prefetch_related("api_keys")
 
-    return render(
-        request,
-        "dashboard/devices.html",
-        {
-            "devices": devices,
-        },
-    )
+    device_rows = []
+    for d in devices:
+        active_keys_qs = d.api_keys.filter(is_active=True).order_by("-expires_at")
+        active_count = active_keys_qs.count()
+        latest_key = active_keys_qs.first()
+
+        device_rows.append(
+            {
+                "device": d,
+                "active_key_count": active_count,
+                "active_key_expires_at": latest_key.expires_at if latest_key else None,
+            }
+        )
+
+    context = {
+        "user": request.user,
+        "device_rows": device_rows,
+    }
+    return render(request, "dashboard/devices.html", context)
 
 
 
