@@ -585,6 +585,68 @@ def list_device_keys(request, device_id: int):
     )
 
 
+@csrf_exempt
+@require_POST
+@api_login_required
+def revoke_device_key(request, device_id, key_id):
+    """
+    Revoke (deactivate) a specific API key for a device owned by the current user.
+
+    URL:
+        POST /api/devices/<device_id>/keys/<key_id>/revoke/
+
+    Auth:
+        - Session login required (api_login_required)
+        - Device must belong to request.user
+
+    Response 200:
+    {
+        "device_id": 1,
+        "serial_number": "SN-ESP32-THERMO-001",
+        "key": {
+            "id": 2,
+            "created_at": "...",
+            "expires_at": "...",
+            "is_active": false
+        }
+    }
+    """
+    # Ensure the device exists and belongs to the current user
+    device = Device.objects.filter(id=device_id, owner=request.user).first()
+    if device is None:
+        return JsonResponse(
+            {"detail": "Device not found or not owned by this user."},
+            status=404,
+        )
+
+    # Find the key for this device
+    api_key_obj = DeviceApiKey.objects.filter(id=key_id, device=device).first()
+    if api_key_obj is None:
+        return JsonResponse(
+            {"detail": "Key not found for this device."},
+            status=404,
+        )
+
+    # Deactivate it (idempotent: calling again keeps it inactive)
+    if api_key_obj.is_active:
+        api_key_obj.is_active = False
+        api_key_obj.save(update_fields=["is_active"])
+
+    return JsonResponse(
+        {
+            "device_id": device.id,
+            "serial_number": device.serial_number,
+            "key": {
+                "id": api_key_obj.id,
+                "created_at": api_key_obj.created_at.isoformat(),
+                "expires_at": api_key_obj.expires_at.isoformat()
+                if api_key_obj.expires_at
+                else None,
+                "is_active": api_key_obj.is_active,
+            },
+        }
+    )
+
 
 @api_login_required
 def list_devices(request):
