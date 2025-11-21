@@ -26,6 +26,7 @@ from .models import TelemetrySnapshot, Device, DeviceApiKey
 
 
 
+
 #Helper Functions:
 
 def api_login_required(view_func):
@@ -331,17 +332,17 @@ def ingest_telemetry(request):
             f"Missing required fields: {', '.join(missing)}"
         )
 
-    # Optional fields from CONTROL
+    # 4 Optional fields from CONTROL
     temp_outside_c = data.get("temp_outside_c")
     hysteresis_c = data.get("hysteresis_c")
     output = data.get("output")  # "HEAT_ON", "COOL_ON", "OFF", etc.
     humidity = data.get("humidity_percent")  # may be absent
 
-    # Optional device timestamp
+    # 5 Optional device timestamp
     device_ts_raw = data.get("timestamp")
     device_ts = parse_datetime(device_ts_raw) if device_ts_raw else None
 
-    # 4) Create snapshot; enforce device_id from authenticated device
+    # 6) Persist snapshot; linked to this device
     snapshot = TelemetrySnapshot.objects.create(
         device_id=device.serial_number,
         mode=data["mode"],
@@ -354,6 +355,10 @@ def ingest_telemetry(request):
         device_ts=device_ts,
         raw_payload=data,
     )
+
+    # Update device.last_seen for dashboards
+    device.last_seen = now()
+    device.save(update_fields=['last_seen'])
 
     logger.info(
         "Ingested telemetry from device %s (snapshot id=%s)",
@@ -550,4 +555,45 @@ def register_device(request):
     )
 
 
+@api_login_required
+def list_devices(request):
+    """
+    Return all devices owned by the logged-in user.
+
+    GET /api/devices/
+
+    Response:
+    {
+        "count": N,
+        "results": [
+            {
+                "id": 1,
+                "serial_number": "SN-ESP32-THERMO-001",
+                "name": "Living Room Thermostat",
+                "created_at": "...iso8601..."
+            },
+            ...
+        ]
+    }
+    """
+    devices = Device.objects.filter(owner=request.user).order_by("created_at")
+
+    results = []
+    for d in devices:
+        results.append(
+            {
+                "id": d.id,
+                "serial_number": d.serial_number,
+                "name": d.name,
+                "created_at": d.created_at.isoformat() if d.created_at else None,
+                "last_seen": d.last_seen.isoformat() if d.last_seen else None,
+            }
+        )
+
+    return JsonResponse(
+        {
+            "count": len(results),
+            "results": results,
+        }
+    )
 

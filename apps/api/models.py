@@ -7,6 +7,8 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from django.conf import settings
+from django.utils.timezone import now
 
 
 User = get_user_model()
@@ -16,13 +18,16 @@ User = get_user_model()
 
 class Device(models.Model):
     owner = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
+        settings.AUTH_USER_MODEL,
         related_name="devices",
+        on_delete=models.CASCADE,
     )
     serial_number = models.CharField(max_length=64, unique=True)
-    name = models.CharField(max_length=128, blank=True)
+    name = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # NEW: last time we heard from this device
+    last_seen = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         label = self.name or self.serial_number

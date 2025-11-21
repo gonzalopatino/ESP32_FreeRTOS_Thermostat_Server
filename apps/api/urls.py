@@ -11,10 +11,12 @@ urlpatterns = [
 
     # Devices
     path("devices/register/", views.register_device, name="register-device"),
+    path("devices/", views.list_devices, name="list_devices"),
 
     # Telemetry
     path("telemetry/ingest/", views.ingest_telemetry, name="ingest-telemetry"),
     path("telemetry/", views.telemetry_query, name="telemetry-query"),
     path("telemetry/recent/", views.recent_telemetry, name="recent-telemetry"),
+    
 ]
 

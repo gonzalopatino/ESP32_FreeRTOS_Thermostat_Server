@@ -13,7 +13,7 @@ class DeviceApiKeyInline(admin.TabularInline):
 
 @admin.register(Device)
 class DeviceAdmin(admin.ModelAdmin):
-    list_display = ("serial_number", "owner", "name", "created_at")
+    list_display = ("serial_number", "owner", "name", "created_at", "last_seen")
     search_fields = ("serial_number", "name", "owner__username")
     inlines = [DeviceApiKeyInline]
 
