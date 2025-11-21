@@ -1,21 +1,25 @@
 import json
 from functools import wraps
+from datetime import timedelta
+
+from django.contrib.auth import authenticate, login, logout, get_user_model
 
 from django.http import JsonResponse, HttpResponseBadRequest
+from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.utils.timezone import now
 
 import logging
 
-from .models import TelemetrySnapshot
+
 from django.utils.dateparse import parse_datetime
 
-from django.utils.timezone import now
+
 from django.db.models import Q
 import os
 from dotenv import load_dotenv
-from datetime import timedelta
+
 
 from .models import TelemetrySnapshot, Device, DeviceApiKey
 
@@ -23,6 +27,123 @@ from .models import TelemetrySnapshot, Device, DeviceApiKey
 logger = logging.getLogger(__name__)
 
 API_KEY = os.getenv("TELEMETRY_API_KEY")
+
+User = get_user_model()
+
+
+@csrf_exempt
+@require_POST
+def register_user(request):
+    """
+    Simple JSON registration endpoint.
+
+    Body:
+    {
+        "username": "gonzalo",
+        "password": "secret123",
+        "email": "optional@example.com"
+    }
+
+    On success:
+    - Creates a new user
+    - Logs them in (session cookie)
+    - Returns basic user info
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return HttpResponseBadRequest("Invalid JSON")
+
+    username = (payload.get("username") or "").strip()
+    password = payload.get("password") or ""
+    email = (payload.get("email") or "").strip()
+
+    if not username or not password:
+        return HttpResponseBadRequest("Fields 'username' and 'password' are required")
+
+    if User.objects.filter(username=username).exists():
+        return JsonResponse(
+            {"detail": "Username already taken"},
+            status=400,
+        )
+
+    user = User.objects.create_user(
+        username=username,
+        password=password,
+        email=email or None,
+    )
+
+    # Log the user in so Postman gets a session cookie
+    login(request, user)
+
+    return JsonResponse(
+        {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+        },
+        status=201,
+    )
+
+
+@csrf_exempt
+@require_POST
+def login_user(request):
+    """
+    JSON login endpoint.
+
+    Body:
+    {
+        "username": "gonzalo",
+        "password": "secret123"
+    }
+
+    On success:
+    - Logs in the user (session cookie)
+    - Returns basic user info
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return HttpResponseBadRequest("Invalid JSON")
+
+    username = (payload.get("username") or "").strip()
+    password = payload.get("password") or ""
+
+    if not username or not password:
+        return HttpResponseBadRequest("Fields 'username' and 'password' are required")
+
+    user = authenticate(request, username=username, password=password)
+    if user is None:
+        return JsonResponse(
+            {"detail": "Invalid credentials"},
+            status=400,
+        )
+
+    login(request, user)
+
+    return JsonResponse(
+        {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+        }
+    )
+
+
+@csrf_exempt
+@require_POST
+def logout_user(request):
+    """
+    Log out the current user (session-based).
+    """
+    logout(request)
+    return JsonResponse({"status": "ok"})
+
+
+
+
+
 
 
 
