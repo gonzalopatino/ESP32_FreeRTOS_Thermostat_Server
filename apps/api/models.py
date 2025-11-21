@@ -1,9 +1,11 @@
+from datetime import timedelta
+import hashlib
+import secrets
+
+
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-import hashlib
-
-
 
 
 
@@ -52,6 +54,31 @@ class DeviceApiKey(models.Model):
 
     def is_valid(self) -> bool:
         return self.is_active and self.expires_at > timezone.now()
+    
+    @classmethod
+    def create_for_device(cls, device, ttl_days: int = 365):
+        """
+        Create a new API key for the given device.
+
+        Returns a tuple: (DeviceApiKey instance, raw_key_string).
+
+        Only the hash is stored in the database, the raw key is meant to be
+        shown exactly once to the user and then forgotten.
+        """
+        # Generate a URL-safe random key, long enough to be hard to guess
+        raw_key = secrets.token_urlsafe(32)  # ~43 chars
+
+        key_hash = cls.hash_key(raw_key)
+        expires_at = timezone.now() + timedelta(days=ttl_days)
+
+        obj = cls.objects.create(
+            device=device,
+            key_hash=key_hash,
+            expires_at=expires_at,
+            is_active=True,
+        )
+        return obj, raw_key
+
 
 
 class TelemetrySnapshot(models.Model):
