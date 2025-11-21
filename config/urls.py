@@ -18,9 +18,25 @@ from django.contrib import admin
 from django.urls import path, include
 from .views import health
 
+from django.contrib.auth import views as auth_views
+from apps.api import views as api_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/health/', health),
     path("api/", include("apps.api.urls")),
+
+    # Auth HTML views
+    path("accounts/register/", api_views.register_page, name="register"),
+
+    path("accounts/login/", auth_views.LoginView.as_view( template_name="registration/login.html"),name="login",),
+
+    path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout",
+    ),
+
+
+    # Dashboard page
+    path("dashboard/devices/", api_views.dashboard_devices, name="dashboard_devices",
+    ),
+
 ]

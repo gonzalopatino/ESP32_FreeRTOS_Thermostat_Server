@@ -62,6 +62,7 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -69,6 +70,10 @@ TEMPLATES = [
         },
     },
 ]
+
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/dashboard/devices/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 WSGI_APPLICATION = 'config.wsgi.application'
 

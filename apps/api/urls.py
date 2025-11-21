@@ -25,6 +25,13 @@ urlpatterns = [
     path("telemetry/", views.telemetry_query, name="telemetry-query"),
     path("telemetry/recent/", views.recent_telemetry, name="recent-telemetry"),
 
+    # New dashboard page
+    path(
+        "dashboard/devices/",
+        views.dashboard_devices,
+        name="dashboard_devices",
+    ),
+
     
 ]
 

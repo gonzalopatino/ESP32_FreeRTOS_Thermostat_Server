@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Login</title>
+</head>
+<body>
+    <h1>Login</h1>
+
+    {% if form.errors %}
+        <p style="color: red;">Invalid username or password. Try again.</p>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <div>
+            <label for="{{ form.username.id_for_label }}">Username:</label>
+            {{ form.username }}
+        </div>
+        <div>
+            <label for="{{ form.password.id_for_label }}">Password:</label>
+            {{ form.password }}
+        </div>
+        <button type="submit">Login</button>
+    </form>
+
+    <p>
+        Do not have an account?
+        <a href="{% url 'register' %}">Register here</a>.
+    </p>
+</body>
+</html>
