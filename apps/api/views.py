@@ -9,7 +9,7 @@ from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.utils.timezone import now
-
+from django.shortcuts import get_object_or_404
 import logging
 
 
@@ -27,7 +27,7 @@ from .models import TelemetrySnapshot, Device, DeviceApiKey
 
 
 
-#Helper Functions:
+#Helper Functions--------------:
 
 def api_login_required(view_func):
     @wraps(view_func)
@@ -100,8 +100,13 @@ def authenticate_device_from_header(request):
     # All good
     return device, None
 
-
-
+def _get_owned_device_or_404(user, device_id: int) -> Device:
+    """
+    Ensure the device exists and belongs to this user.
+    Raises 404 if not found or not owned.
+    """
+    return get_object_or_404(Device, id=device_id, owner=user)
+#----------------------------
 
 
 
@@ -224,16 +229,6 @@ def logout_user(request):
     """
     logout(request)
     return JsonResponse({"status": "ok"})
-
-
-
-
-
-
-
-
-
-
 
 
 def recent_telemetry(request):
@@ -553,6 +548,42 @@ def register_device(request):
             "expires_at": api_key_obj.expires_at.isoformat(),
         }
     )
+
+
+@csrf_exempt
+@api_login_required
+def list_device_keys(request, device_id: int):
+    """
+    List all API keys for a device owned by the current user.
+
+    GET /api/devices/<device_id>/keys/
+    """
+    if request.method != "GET":
+        return HttpResponseBadRequest("Only GET allowed")
+
+    device = _get_owned_device_or_404(request.user, device_id)
+    keys = device.api_keys.order_by("-created_at")
+
+    results = []
+    for k in keys:
+        results.append(
+            {
+                "id": k.id,
+                "created_at": k.created_at.isoformat() if k.created_at else None,
+                "expires_at": k.expires_at.isoformat() if k.expires_at else None,
+                "is_active": k.is_active,
+            }
+        )
+
+    return JsonResponse(
+        {
+            "device_id": device.id,
+            "serial_number": device.serial_number,
+            "count": len(results),
+            "results": results,
+        }
+    )
+
 
 
 @api_login_required

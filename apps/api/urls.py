@@ -13,10 +13,13 @@ urlpatterns = [
     path("devices/register/", views.register_device, name="register-device"),
     path("devices/", views.list_devices, name="list_devices"),
 
+    path("devices/<int:device_id>/keys/",views.list_device_keys, name="list_device_keys",),
+
     # Telemetry
     path("telemetry/ingest/", views.ingest_telemetry, name="ingest-telemetry"),
     path("telemetry/", views.telemetry_query, name="telemetry-query"),
     path("telemetry/recent/", views.recent_telemetry, name="recent-telemetry"),
+
     
 ]
 
