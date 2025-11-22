@@ -55,34 +55,72 @@ def logout_view(request):
     # assumes your login URL is named "login"
     return redirect("login")
 
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.shortcuts import render, redirect
+
+from .models import Device, DeviceApiKey
+
 
 @login_required
 def dashboard_devices(request):
-    """
-    Simple HTML dashboard listing the current user's devices.
-    One row per device: serial, name, created_at, and key info.
-    """
-    devices = Device.objects.filter(owner=request.user).prefetch_related("api_keys")
+    devices = (
+        Device.objects
+        .filter(owner=request.user)
+        .prefetch_related("api_keys")
+        .order_by("created_at")
+    )
 
-    device_rows = []
-    for d in devices:
-        active_keys_qs = d.api_keys.filter(is_active=True).order_by("-expires_at")
-        active_count = active_keys_qs.count()
-        latest_key = active_keys_qs.first()
+    if request.method == "POST":
+        serial = request.POST.get("serial_number", "").strip()
+        name = request.POST.get("name", "").strip()
 
-        device_rows.append(
-            {
-                "device": d,
-                "active_key_count": active_count,
-                "active_key_expires_at": latest_key.expires_at if latest_key else None,
-            }
+        if not serial:
+            messages.error(request, "Serial number is required.")
+            return redirect("dashboard_devices")
+
+        # Try to find an existing device with this serial
+        try:
+            device = Device.objects.get(serial_number=serial)
+            if device.owner != request.user:
+                messages.error(
+                    request,
+                    "This device serial is already registered to another user."
+                )
+                return redirect("dashboard_devices")
+            # Device is already owned by this user, optional rename
+            if name:
+                device.name = name
+                device.save()
+        except Device.DoesNotExist:
+            # Create a new device and assign to this user
+            device = Device.objects.create(
+                owner=request.user,
+                serial_number=serial,
+                name=name,
+            )
+
+        # Rotate keys: deactivate all previous keys
+        device.api_keys.update(is_active=False)
+
+        # Create a fresh API key and get the raw value once
+        api_key_obj, raw_key = DeviceApiKey.create_for_device(device, ttl_days=365)
+
+        messages.success(
+            request,
+            (
+                f"Device '{device.serial_number}' registered. "
+                f"Copy this API key now, you will not see it again: {raw_key}"
+            ),
         )
 
+        return redirect("dashboard_devices")
+
     context = {
-        "user": request.user,
-        "device_rows": device_rows,
+        "devices": devices,
     }
     return render(request, "dashboard/devices.html", context)
+
 
 
 

@@ -1,51 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Your devices</title>
+    <meta charset="UTF-8">
+    <title>Devices for {{ request.user.username }}</title>
 </head>
 <body>
-    <h1>Devices for {{ user.username }}</h1>
+    <h1>Devices for {{ request.user.username }}</h1>
 
+    {# Flash messages: success / error / info #}
+    {% if messages %}
+      <div>
+        {% for message in messages %}
+          <p>{{ message }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {# Logout button #}
     <form method="post" action="{% url 'logout' %}">
-    {% csrf_token %}
-    <button type="submit">Logout</button>
-</form>
+      {% csrf_token %}
+      <button type="submit">Logout</button>
+    </form>
 
-    {% if device_rows %}
-        <table border="1" cellpadding="6" cellspacing="0">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Serial number</th>
-                    <th>Name</th>
-                    <th>Created at</th>
-                    <th>Active keys</th>
-                    <th>Latest key expires at</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in device_rows %}
-                    <tr>
-                        <td>{{ row.device.id }}</td>
-                        <td>{{ row.device.serial_number }}</td>
-                        <td>{{ row.device.name|default:"(no name)" }}</td>
-                        <td>{{ row.device.created_at }}</td>
-                        <td>{{ row.active_key_count }}</td>
-                        <td>
-                            {% if row.active_key_expires_at %}
-                                {{ row.active_key_expires_at }}
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <hr>
+
+    <h2>Register new device</h2>
+
+    <form method="post">
+      {% csrf_token %}
+      <div>
+        <label for="id_serial_number">Serial number:</label>
+        <input type="text" id="id_serial_number" name="serial_number" required>
+      </div>
+      <div>
+        <label for="id_name">Name (optional):</label>
+        <input type="text" id="id_name" name="name">
+      </div>
+      <button type="submit">Register device</button>
+    </form>
+
+    <hr>
+
+    <h2>Your devices</h2>
+
+    {% if devices %}
+      <table border="1" cellpadding="4" cellspacing="0">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Serial number</th>
+            <th>Name</th>
+            <th>Created at</th>
+            <th>Last seen</th>
+            <th>Active keys</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for device in devices %}
+            <tr>
+              <td>{{ device.id }}</td>
+              <td>{{ device.serial_number }}</td>
+              <td>{{ device.name|default:"(unnamed)" }}</td>
+              <td>{{ device.created_at }}</td>
+              <td>{{ device.last_seen|default:"never" }}</td>
+              <td>{{ device.api_keys.filter(is_active=True)|length }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     {% else %}
-        <p>You do not have any devices yet.</p>
-        <p>Use the API to register a device and generate an API key, then refresh this page.</p>
+      <p>You do not have any devices yet. Use the form above to register one.</p>
     {% endif %}
 </body>
 </html>
