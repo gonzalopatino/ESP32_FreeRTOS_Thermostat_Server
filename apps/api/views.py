@@ -16,7 +16,7 @@ import logging
 from django.utils.dateparse import parse_datetime
 
 
-from django.db.models import Q
+from django.db.models import Q, Count
 import os
 from dotenv import load_dotenv
 
@@ -67,6 +67,12 @@ def dashboard_devices(request):
     devices = (
         Device.objects
         .filter(owner=request.user)
+        .annotate(
+            active_key_count=Count(
+                "api_keys",
+                filter=Q(api_keys__is_active=True),
+            )
+        )
         .prefetch_related("api_keys")
         .order_by("created_at")
     )

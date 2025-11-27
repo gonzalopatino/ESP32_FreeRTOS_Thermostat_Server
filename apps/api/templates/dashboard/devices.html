@@ -63,7 +63,8 @@
               <td>{{ device.name|default:"(unnamed)" }}</td>
               <td>{{ device.created_at }}</td>
               <td>{{ device.last_seen|default:"never" }}</td>
-              <td>{{ device.api_keys.filter(is_active=True)|length }}</td>
+              <td>{{ device.active_key_count }}</td>
+
             </tr>
           {% endfor %}
         </tbody>
