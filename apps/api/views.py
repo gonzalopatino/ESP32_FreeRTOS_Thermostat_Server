@@ -63,6 +63,8 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 
 from .models import Device, DeviceApiKey
+from django.shortcuts import render, get_object_or_404, redirect
+from .models import Device, DeviceApiKey, TelemetrySnapshot
 
 
 @login_required
@@ -137,18 +139,54 @@ def dashboard_device_detail(request, device_id: int):
     # Ensure the device belongs to the logged-in user
     device = get_object_or_404(Device, id=device_id, owner=request.user)
 
-    # Get recent telemetry for this device, newest first
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "rotate":
+            # Deactivate all existing keys
+            device.api_keys.update(is_active=False)
+            # Create a new key with 1-year TTL
+            api_key_obj, raw_key = DeviceApiKey.create_for_device(device, ttl_days=365)
+            messages.success(
+                request,
+                (
+                    "API key rotated. Copy this new key now, "
+                    f"you will not see it again: {raw_key}"
+                ),
+            )
+            return redirect("dashboard_device_detail", device_id=device.id)
+
+        elif action == "revoke":
+            key_id = request.POST.get("key_id")
+            try:
+                key = device.api_keys.get(id=key_id)
+            except DeviceApiKey.DoesNotExist:
+                messages.error(request, "API key not found for this device.")
+            else:
+                if not key.is_active:
+                    messages.info(request, "This API key is already inactive.")
+                else:
+                    key.is_active = False
+                    key.save()
+                    messages.success(request, "API key revoked.")
+            return redirect("dashboard_device_detail", device_id=device.id)
+
+    # GET (or fallthrough after POST handling) – show device info and telemetry
     snapshots = (
         TelemetrySnapshot.objects
         .filter(device_id=device.serial_number)
         .order_by("-server_ts")[:50]
     )
 
+    keys = device.api_keys.order_by("-created_at")
+
     context = {
         "device": device,
         "snapshots": snapshots,
+        "keys": keys,
     }
     return render(request, "dashboard/device_detail.html", context)
+
 
 
 

@@ -7,6 +7,15 @@
 <body>
     <h1>Device details for {{ device.serial_number }}</h1>
 
+    {# Flash messages #}
+    {% if messages %}
+      <div>
+        {% for message in messages %}
+          <p>{{ message }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
     <p>
         <strong>Owner:</strong> {{ request.user.username }}<br>
         <strong>Name:</strong> {{ device.name|default:"(unnamed)" }}<br>
@@ -17,6 +26,60 @@
     <p>
         <a href="{% url 'dashboard_devices' %}">&larr; Back to all devices</a>
     </p>
+
+    <hr>
+
+    <h2>API keys</h2>
+
+    <form method="post" style="margin-bottom: 1em;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="rotate">
+      <button type="submit">Rotate API key (invalidate old keys)</button>
+    </form>
+
+    {% if keys %}
+      <table border="1" cellpadding="4" cellspacing="0">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Created at</th>
+            <th>Expires at</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for key in keys %}
+            <tr>
+              <td>{{ key.id }}</td>
+              <td>{{ key.created_at }}</td>
+              <td>{{ key.expires_at }}</td>
+              <td>
+                {% if key.is_active %}
+                  active
+                {% else %}
+                  inactive
+                {% endif %}
+              </td>
+              <td>
+                {% if key.is_active %}
+                  <form method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="revoke">
+                    <input type="hidden" name="key_id" value="{{ key.id }}">
+                    <button type="submit">Revoke</button>
+                  </form>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No keys yet for this device.</p>
+    {% endif %}
 
     <hr>
 
