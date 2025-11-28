@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Device {{ device.serial_number }} details</title>
+</head>
+<body>
+    <h1>Device details for {{ device.serial_number }}</h1>
+
+    <p>
+        <strong>Owner:</strong> {{ request.user.username }}<br>
+        <strong>Name:</strong> {{ device.name|default:"(unnamed)" }}<br>
+        <strong>Created at:</strong> {{ device.created_at }}<br>
+        <strong>Last seen:</strong> {{ device.last_seen|default:"never" }}
+    </p>
+
+    <p>
+        <a href="{% url 'dashboard_devices' %}">&larr; Back to all devices</a>
+    </p>
+
+    <hr>
+
+    <h2>Recent telemetry (latest up to 50 samples)</h2>
+
+    {% if snapshots %}
+      <table border="1" cellpadding="4" cellspacing="0">
+        <thead>
+          <tr>
+            <th>Server time</th>
+            <th>Device time</th>
+            <th>Mode</th>
+            <th>Tin (°C)</th>
+            <th>Tout (°C)</th>
+            <th>Setpoint (°C)</th>
+            <th>Hysteresis (°C)</th>
+            <th>Humidity (%)</th>
+            <th>Output</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in snapshots %}
+            <tr>
+              <td>{{ s.server_ts }}</td>
+              <td>{{ s.device_ts|default:"-" }}</td>
+              <td>{{ s.mode }}</td>
+              <td>{{ s.temp_inside_c }}</td>
+              <td>{{ s.temp_outside_c|default:"-" }}</td>
+              <td>{{ s.setpoint_c }}</td>
+              <td>{{ s.hysteresis_c|default:"-" }}</td>
+              <td>{{ s.humidity_percent|default:"-" }}</td>
+              <td>{{ s.output|default:"-" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No telemetry has been received for this device yet.</p>
+    {% endif %}
+</body>
+</html>

@@ -29,6 +29,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import render
 
+from django.shortcuts import render, get_object_or_404
+from .models import Device, TelemetrySnapshot
+
 def register_page(request):
     """
     Simple HTML registration view using Django's UserCreationForm.
@@ -126,6 +129,27 @@ def dashboard_devices(request):
         "devices": devices,
     }
     return render(request, "dashboard/devices.html", context)
+
+
+
+@login_required
+def dashboard_device_detail(request, device_id: int):
+    # Ensure the device belongs to the logged-in user
+    device = get_object_or_404(Device, id=device_id, owner=request.user)
+
+    # Get recent telemetry for this device, newest first
+    snapshots = (
+        TelemetrySnapshot.objects
+        .filter(device_id=device.serial_number)
+        .order_by("-server_ts")[:50]
+    )
+
+    context = {
+        "device": device,
+        "snapshots": snapshots,
+    }
+    return render(request, "dashboard/device_detail.html", context)
+
 
 
 

@@ -28,6 +28,11 @@ urlpatterns = [
     path("accounts/login/", auth_views.LoginView.as_view( template_name="registration/login.html"),name="login",),
     path("accounts/logout/", api_views.logout_view, name="logout",),
     path("dashboard/devices/", api_views.dashboard_devices, name="dashboard_devices",),
+    path(
+        "dashboard/devices/<int:device_id>/",
+        api_views.dashboard_device_detail,
+        name="dashboard_device_detail",
+    ),
     
      # API auth (for Postman / programmatic)
     path('admin/', admin.site.urls),
