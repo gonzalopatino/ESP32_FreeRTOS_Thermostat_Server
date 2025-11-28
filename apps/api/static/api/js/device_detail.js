@@ -84,6 +84,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
   tempChart = createTempChart(tempCtx);
 
+  function formatServerTimeForChart(isoString) {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return isoString;
+
+  const pad = (n) => (n < 10 ? "0" + n : "" + n);
+  
+  const yyyy = d.getFullYear();
+  const mm = pad(d.getMonth() + 1);
+  const dd = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const mi = pad(d.getMinutes());
+  const ss = pad(d.getSeconds());
+
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+}
+
+
   function formatLabel(isoString) {
     if (!isoString) return "";
     const d = new Date(isoString);
@@ -150,10 +168,11 @@ document.addEventListener("DOMContentLoaded", function () {
     );
 
 
-    const labels = data.map((s) => formatLabel(s.server_ts));
+    const labels = data.map((s) => formatServerTimeForChart(s.server_ts));
     const tin = data.map((s) => s.temp_inside_c);
     const tout = data.map((s) => s.temp_outside_c);
     const sp = data.map((s) => s.setpoint_c);
+
 
     console.log("Chart labels:", labels);
 
