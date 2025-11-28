@@ -231,7 +231,9 @@ def dashboard_device_detail(request, device_id: int):
             # Deactivate all existing keys
             device.api_keys.update(is_active=False)
             # Create a new key with 1-year TTL
-            api_key_obj, raw_key = DeviceApiKey.create_for_device(device, ttl_days=365)
+            api_key_obj, raw_key = DeviceApiKey.create_for_device(
+                device, ttl_days=365
+            )
             messages.success(
                 request,
                 (
@@ -255,6 +257,34 @@ def dashboard_device_detail(request, device_id: int):
                     key.save()
                     messages.success(request, "API key revoked.")
             return redirect("dashboard_device_detail", device_id=device.id)
+
+        elif action == "update_device":
+            new_name = (request.POST.get("name") or "").strip()
+            if not new_name:
+                messages.error(request, "Device name cannot be empty.")
+            else:
+                device.name = new_name
+                device.save(update_fields=["name"])
+                messages.success(request, "Device name updated.")
+            return redirect("dashboard_device_detail", device_id=device.id)
+
+        elif action == "delete_device":
+            serial = device.serial_number
+
+            # Delete related API keys
+            device.api_keys.all().delete()
+
+            # Delete telemetry snapshots for this device (because not FK)
+            TelemetrySnapshot.objects.filter(device_id=serial).delete()
+
+            # Finally delete the device itself
+            device.delete()
+
+            messages.success(
+                request,
+                f"Device '{serial}' and all its telemetry have been deleted.",
+            )
+            return redirect("dashboard_devices")
 
     # GET (or fallthrough after POST handling) – show device info and telemetry
     snapshots = (
