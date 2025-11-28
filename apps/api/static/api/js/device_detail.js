@@ -1,12 +1,47 @@
 (function () {
-  const canvas = document.getElementById("telemetryChart");
-  if (!canvas) {
-    return;
+  // -------------- Metric configuration --------------
+
+  // Each metric config describes:
+  // - which canvas to bind to
+  // - how to label the Y axis
+  // - which fields from telemetry to plot
+  const METRIC_CONFIGS = {
+    temperature: {
+      canvasId: "metric-temperature",
+      yLabel: "Temperature (°C)",
+      datasets: [
+        { label: "Tin (°C)", field: "temp_inside_c" },
+        { label: "Setpoint (°C)", field: "setpoint_c" },
+        { label: "Tout (°C)", field: "temp_outside_c" }
+      ]
+    }
+    // Later you can add:
+    // humidity: {
+    //   canvasId: "metric-humidity",
+    //   yLabel: "Humidity (%)",
+    //   datasets: [
+    //     { label: "Humidity (%)", field: "humidity_percent" }
+    //   ]
+    // }
+  };
+
+  // -------------- Find device serial --------------
+
+  // Find the first existing metric canvas and read its device serial.
+  // All metrics for this page share the same device.
+  let deviceSerial = null;
+  for (const metricName in METRIC_CONFIGS) {
+    if (!Object.prototype.hasOwnProperty.call(METRIC_CONFIGS, metricName)) continue;
+    const cfg = METRIC_CONFIGS[metricName];
+    const canvas = document.getElementById(cfg.canvasId);
+    if (canvas && canvas.dataset.deviceSerial) {
+      deviceSerial = canvas.dataset.deviceSerial;
+      break;
+    }
   }
 
-  const deviceSerial = canvas.dataset.deviceSerial;
   if (!deviceSerial) {
-    console.error("No device serial found on telemetryChart element.");
+    // No metric canvas on this page, nothing to do.
     return;
   }
 
@@ -14,70 +49,82 @@
     deviceSerial
   )}&limit=50`;
 
-  const ctx = canvas.getContext("2d");
+  // -------------- Initialize charts --------------
 
   // Full timestamps for tooltip titles
   let telemetryTimestamps = [];
+  // Keep charts keyed by metric name
+  const charts = {};
 
-  const chartConfig = {
-    type: "line",
-    data: {
-      labels: [],
-      datasets: [
-        {
-          label: "Tin (°C)",
+  function createChartForMetric(metricName, cfg) {
+    const canvas = document.getElementById(cfg.canvasId);
+    if (!canvas) {
+      return null;
+    }
+
+    const ctx = canvas.getContext("2d");
+
+    const chartConfig = {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: cfg.datasets.map((ds) => ({
+          label: ds.label,
           data: [],
           tension: 0.2
-        },
-        {
-          label: "Setpoint (°C)",
-          data: [],
-          tension: 0.2
-        },
-        {
-          label: "Tout (°C)",
-          data: [],
-          tension: 0.2
-        }
-      ]
-    },
-    options: {
-      responsive: false,
-      plugins: {
-        tooltip: {
-          callbacks: {
-            // Tooltip title: full server_ts with date
-            title: function (items) {
-              if (!items.length) {
-                return "";
+        }))
+      },
+      options: {
+        responsive: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              // Tooltip title: full server_ts with date
+              title: function (items) {
+                if (!items.length) {
+                  return "";
+                }
+                const idx = items[0].dataIndex;
+                return telemetryTimestamps[idx] || "";
               }
-              const idx = items[0].dataIndex;
-              return telemetryTimestamps[idx] || "";
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: "Time"
+            },
+            ticks: {
+              maxTicksLimit: 6
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: cfg.yLabel
             }
           }
         }
-      },
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: "Time"
-          },
-          ticks: {
-            maxTicksLimit: 6
-          }
-        },
-        y: {
-          title: {
-            display: true,
-            text: "Temperature (°C)"
-          }
-        }
+      }
+    };
+
+    return new Chart(ctx, chartConfig);
+  }
+
+  function initCharts() {
+    for (const metricName in METRIC_CONFIGS) {
+      if (!Object.prototype.hasOwnProperty.call(METRIC_CONFIGS, metricName)) continue;
+      const cfg = METRIC_CONFIGS[metricName];
+      const chart = createChartForMetric(metricName, cfg);
+      if (chart) {
+        charts[metricName] = chart;
       }
     }
-  };
+  }
 
-  const telemetryChart = new Chart(ctx, chartConfig);
+  // -------------- Telemetry fetch + update --------------
 
   function updateTelemetry() {
     fetch(apiUrl)
@@ -95,9 +142,6 @@
         data.sort((a, b) => (a.server_ts > b.server_ts ? 1 : -1));
 
         const labels = [];
-        const tin = [];
-        const setpoint = [];
-        const tout = [];
         telemetryTimestamps = [];
 
         const tbody = document.getElementById("telemetry-table-body");
@@ -121,10 +165,7 @@
           labels.push(label);
           telemetryTimestamps.push(item.server_ts || "");
 
-          tin.push(item.temp_inside_c);
-          setpoint.push(item.setpoint_c);
-          tout.push(item.temp_outside_c);
-
+          // Rebuild table row
           const row = document.createElement("tr");
 
           function cell(text) {
@@ -165,19 +206,40 @@
           tbody.appendChild(row);
         });
 
-        telemetryChart.data.labels = labels;
-        telemetryChart.data.datasets[0].data = tin;
-        telemetryChart.data.datasets[1].data = setpoint;
-        telemetryChart.data.datasets[2].data = tout;
-        telemetryChart.update();
+        // Update all metric charts based on the same telemetry
+        for (const metricName in METRIC_CONFIGS) {
+          if (!Object.prototype.hasOwnProperty.call(METRIC_CONFIGS, metricName)) continue;
+          const cfg = METRIC_CONFIGS[metricName];
+          const chart = charts[metricName];
+          if (!chart) {
+            continue;
+          }
+
+          // Prepare one array per dataset
+          const datasetValues = cfg.datasets.map(() => []);
+
+          data.forEach((item) => {
+            cfg.datasets.forEach((ds, idx) => {
+              const value = item[ds.field];
+              datasetValues[idx].push(value);
+            });
+          });
+
+          chart.data.labels = labels;
+          cfg.datasets.forEach((ds, idx) => {
+            chart.data.datasets[idx].data = datasetValues[idx];
+          });
+          chart.update();
+        }
       })
       .catch((error) => {
         console.error("Error fetching telemetry:", error);
       });
   }
 
-  // Initial load
+  // -------------- Init + poll --------------
+
+  initCharts();
   updateTelemetry();
-  // Poll every 5 seconds
   setInterval(updateTelemetry, 5000);
 })();
