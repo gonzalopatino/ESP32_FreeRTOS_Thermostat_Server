@@ -118,6 +118,7 @@ document.addEventListener("DOMContentLoaded", function () {
         : telemetryUrl;
 
     let resp;
+
     try {
       resp = await fetch(url, {
         headers: { "X-Requested-With": "XMLHttpRequest" },
@@ -135,10 +136,26 @@ document.addEventListener("DOMContentLoaded", function () {
     const payload = await resp.json();
     const rows = payload.results || payload.data || [];
 
-    const labels = rows.map((s) => formatLabel(s.server_ts));
-    const tin = rows.map((s) => s.temp_inside_c);
-    const tout = rows.map((s) => s.temp_outside_c);
-    const sp = rows.map((s) => s.setpoint_c);
+   // Sort telemetry by timestamp: oldest → newest
+    const data = rows.slice().sort((a, b) => {
+      const ta = (a.server_ts || a.device_ts || "");
+      const tb = (b.server_ts || b.device_ts || "");
+      // ISO 8601 strings sort correctly lexicographically
+      return ta.localeCompare(tb);
+    });
+
+    console.log(
+      "Telemetry order (server_ts, sorted):",
+      data.map((s) => s.server_ts || s.device_ts)
+    );
+
+
+    const labels = data.map((s) => formatLabel(s.server_ts));
+    const tin = data.map((s) => s.temp_inside_c);
+    const tout = data.map((s) => s.temp_outside_c);
+    const sp = data.map((s) => s.setpoint_c);
+
+    console.log("Chart labels:", labels);
 
     if (tempChart) {
       tempChart.data.labels = labels;
@@ -150,7 +167,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const countSpan = document.getElementById("samplesCount");
     if (countSpan) {
-      countSpan.textContent = payload.count ?? rows.length;
+      countSpan.textContent = payload.count ?? data.length;
     }
   }
 

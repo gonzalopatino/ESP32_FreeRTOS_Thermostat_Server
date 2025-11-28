@@ -680,6 +680,7 @@ def telemetry_query(request):
     # Latest vs limit
     latest_flag = _parse_bool(request.GET.get("latest"))
     if latest_flag:
+        # realtime card: newest snapshot only
         qs = qs.order_by("-server_ts")[:1]
     else:
         limit_param = request.GET.get("limit")
@@ -688,7 +689,8 @@ def telemetry_query(request):
         except ValueError:
             return HttpResponseBadRequest("Invalid 'limit', must be an integer")
         limit = max(1, min(limit, 1000))
-        qs = qs.order_by("-server_ts")[:limit]
+        # history / chart: oldest → newest
+        qs = qs.order_by("server_ts")[:limit]
 
     # Serialize snapshots
     results = []
@@ -716,7 +718,7 @@ def telemetry_query(request):
             "results": results,
         }
     )
-    
+
 
 
 def ping(request):
