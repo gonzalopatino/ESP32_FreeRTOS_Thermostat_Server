@@ -11,13 +11,11 @@ document.addEventListener("DOMContentLoaded", function () {
   const toInput = document.getElementById("toDate");
   const applyBtn = document.getElementById("applyRangeBtn");
 
-  const indoorCtx = document.getElementById("indoorChart");
-  const outdoorCtx = document.getElementById("outdoorChart");
+  const tempCtx = document.getElementById("tempChart");
 
-  let indoorChart = null;
-  let outdoorChart = null;
+  let tempChart = null;
 
-  function createChart(ctx, label) {
+  function createTempChart(ctx) {
     if (!ctx) return null;
 
     return new Chart(ctx, {
@@ -26,7 +24,21 @@ document.addEventListener("DOMContentLoaded", function () {
         labels: [],
         datasets: [
           {
-            label: label,
+            label: "Tin (°C)",
+            data: [],
+            borderWidth: 2,
+            pointRadius: 2,
+            tension: 0.2,
+          },
+          {
+            label: "Tout (°C)",
+            data: [],
+            borderWidth: 2,
+            pointRadius: 2,
+            tension: 0.2,
+          },
+          {
+            label: "SP (°C)",
             data: [],
             borderWidth: 2,
             pointRadius: 2,
@@ -36,10 +48,22 @@ document.addEventListener("DOMContentLoaded", function () {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false, // use CSS height
+        maintainAspectRatio: false, // use the 260px from CSS
+        interaction: {
+          mode: "index",
+          intersect: false,
+        },
+        plugins: {
+          legend: {
+            position: "top",
+          },
+        },
         scales: {
           x: {
-            ticks: { autoSkip: true, maxTicksLimit: 8 },
+            ticks: {
+              autoSkip: true,
+              maxTicksLimit: 8,
+            },
           },
           y: {
             beginAtZero: false,
@@ -49,23 +73,37 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  indoorChart = createChart(indoorCtx, "Tin (°C)");
-  outdoorChart = createChart(outdoorCtx, "Tout (°C)");
+  tempChart = createTempChart(tempCtx);
+
+  function formatLabel(isoString) {
+    if (!isoString) return "";
+    const d = new Date(isoString);
+    if (Number.isNaN(d.getTime())) {
+      // if parsing fails, just show raw string
+      return isoString;
+    }
+    const pad = (n) => (n < 10 ? "0" + n : "" + n);
+    const mm = pad(d.getMonth() + 1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const min = pad(d.getMinutes());
+    // Example: 11-28 05:31
+    return `${mm}-${dd} ${hh}:${min}`;
+  }
 
   async function loadTelemetry(useDefaultRange = false) {
     const params = new URLSearchParams();
-    // Your TelemetrySnapshot.device_id stores the serial string
+    // your TelemetrySnapshot.device_id stores the serial string
     params.append("device_id", serial);
 
     const fromVal = fromInput.value;
     const toVal = toInput.value;
 
     if (fromVal && toVal) {
-      // Match view's parameter names
       params.append("start", fromVal);
       params.append("end", toVal);
     } else if (useDefaultRange) {
-      // When no dates set, ask backend for last 24h
+      // backend treats 'range=24h' as “last 24 hours”
       params.append("range", "24h");
     }
 
@@ -81,25 +119,21 @@ document.addEventListener("DOMContentLoaded", function () {
     const payload = await resp.json();
     const rows = payload.results || payload.data || [];
 
-    const labels = rows.map((s) => s.server_ts);
-    const indoorData = rows.map((s) => s.temp_inside_c);
-    const outdoorData = rows.map((s) => s.temp_outside_c);
+    const labels = rows.map((s) => formatLabel(s.server_ts));
+    const tin = rows.map((s) => s.temp_inside_c);
+    const tout = rows.map((s) => s.temp_outside_c);
+    const sp = rows.map((s) => s.setpoint_c);
 
-    if (indoorChart) {
-      indoorChart.data.labels = labels;
-      indoorChart.data.datasets[0].data = indoorData;
-      indoorChart.update();
-    }
-
-    if (outdoorChart) {
-      outdoorChart.data.labels = labels;
-      outdoorChart.data.datasets[0].data = outdoorData;
-      outdoorChart.update();
+    if (tempChart) {
+      tempChart.data.labels = labels;
+      tempChart.data.datasets[0].data = tin;
+      tempChart.data.datasets[1].data = tout;
+      tempChart.data.datasets[2].data = sp;
+      tempChart.update();
     }
 
     const countSpan = document.getElementById("samplesCount");
     if (countSpan) {
-      // try count from backend, fall back to rows length
       countSpan.textContent = payload.count ?? rows.length;
     }
   }
@@ -107,7 +141,6 @@ document.addEventListener("DOMContentLoaded", function () {
   // Initial load: last 24 hours
   loadTelemetry(true);
 
-  // Apply button for custom range
   if (applyBtn) {
     applyBtn.addEventListener("click", function () {
       loadTelemetry(false);
