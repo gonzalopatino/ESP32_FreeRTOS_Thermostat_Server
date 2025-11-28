@@ -13,6 +13,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const tempCtx = document.getElementById("tempChart");
 
+  // Realtime card elements
+  const rtCard = document.getElementById("realtime-card");
+  const rtTs = document.getElementById("rt-timestamp");
+  const rtTin = document.getElementById("rt-tin");
+  const rtTout = document.getElementById("rt-tout");
+  const rtSp = document.getElementById("rt-sp");
+  const rtMode = document.getElementById("rt-mode");
+  const rtOut = document.getElementById("rt-out");
+
   let tempChart = null;
 
   function createTempChart(ctx) {
@@ -145,9 +154,70 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // Initial load: last 24 hours
-  loadTelemetry(true);
+  // Realtime telemetry (latest sample every 5 seconds)
+  async function loadRealtime() {
+    if (!rtCard) {
+      return;
+    }
 
+    const params = new URLSearchParams();
+    params.append("device_id", serial);
+    params.append("latest", "1");
+
+    const url = `${telemetryUrl}?${params.toString()}`;
+
+    let resp;
+    try {
+      resp = await fetch(url, {
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      });
+    } catch (err) {
+      console.warn("Failed to fetch realtime telemetry:", err);
+      return;
+    }
+
+    if (!resp.ok) {
+      console.warn("Realtime telemetry request failed with status", resp.status);
+      return;
+    }
+
+    const payload = await resp.json();
+    const rows = payload.results || payload.data || [];
+    if (!rows.length) {
+      // No data yet, just leave card as-is
+      return;
+    }
+
+    const s = rows[0];
+
+    const ts = s.server_ts || s.device_ts || "";
+    if (rtTs) {
+      if (ts) {
+        const d = new Date(ts);
+        const tsText = Number.isNaN(d.getTime())
+          ? ts
+          : d.toLocaleString() + " UTC";
+        rtTs.textContent = "Last update: " + tsText;
+      } else {
+        rtTs.textContent = "Last update: --";
+      }
+    }
+
+    if (rtTin) rtTin.textContent = s.temp_inside_c ?? "--";
+    if (rtTout) rtTout.textContent = s.temp_outside_c ?? "--";
+    if (rtSp) rtSp.textContent = s.setpoint_c ?? "--";
+    if (rtMode) rtMode.textContent = s.mode ?? "--";
+    if (rtOut) rtOut.textContent = s.output ?? "--";
+  }
+
+  // Initial loads
+  loadTelemetry(true);
+  loadRealtime();
+
+  // Realtime poll every 5 seconds
+  setInterval(loadRealtime, 5000);
+
+  // Apply button behavior
   if (applyBtn) {
     applyBtn.addEventListener("click", function () {
       const fromVal = fromInput.value;

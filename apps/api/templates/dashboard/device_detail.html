@@ -3,53 +3,41 @@
 
 {% block title %}Device detail{% endblock %}
 
-{% block extra_head %}
-  {{ block.super }}
-  <style>
-    .chart-card {
-      min-height: 300px;
-    }
-    .chart-container {
-      position: relative;
-      height: 260px;  /* controls chart height */
-    }
-  </style>
-{% endblock %}
-
 {% block content %}
 <div class="container py-4">
-  <h2 class="mb-1">Device detail</h2>
-  <p class="text-muted mb-3">
-    {{ device.name|default:"(unnamed)" }} ·
+  <h1 class="h3 mb-1">Device detail</h1>
+  <p class="text-muted mb-4">
+    {{ device.name|default:"(no name)" }}
+    &middot;
     Serial:
-    <span class="fw-semibold">{{ device.serial_number }}</span>
+    <span class="text-monospace">{{ device.serial_number }}</span>
   </p>
 
-  <div class="d-flex justify-content-between mb-3 small text-muted">
-    <span>
+  <div class="d-flex justify-content-between mb-4 small text-muted">
+    <div>
       Created:
       {% if device.created_at %}
         {{ device.created_at|date:"Y-m-d H:i" }} UTC
       {% else %}
         unknown
       {% endif %}
-    </span>
-    <span>
+    </div>
+    <div>
       Last seen:
       {% if device.last_seen %}
         {{ device.last_seen|date:"Y-m-d H:i" }} UTC
       {% else %}
         never
       {% endif %}
-    </span>
+    </div>
   </div>
 
   <!-- Root element used by JS to pick up context -->
   <div
     id="device-detail-root"
     data-device-serial="{{ device.serial_number }}"
-    data-telemetry-url="{% url 'telemetry_query' %}">
-  </div>
+    data-telemetry-url="{% url 'telemetry_query' %}"
+  ></div>
 
   <!-- Tabs -->
   <ul class="nav nav-tabs mb-3" id="deviceDetailTabs" role="tablist">
@@ -62,7 +50,8 @@
         type="button"
         role="tab"
         aria-controls="main-tab-pane"
-        aria-selected="true">
+        aria-selected="true"
+      >
         Main
       </button>
     </li>
@@ -75,84 +64,123 @@
         type="button"
         role="tab"
         aria-controls="control-tab-pane"
-        aria-selected="false">
+        aria-selected="false"
+      >
         Control panel
       </button>
     </li>
   </ul>
 
-  <div class="tab-content">
-
+  <div class="tab-content" id="deviceDetailTabsContent">
     <!-- Main tab -->
     <div
       class="tab-pane fade show active"
       id="main-tab-pane"
       role="tabpanel"
-      aria-labelledby="main-tab">
-
-      <!-- Date range form -->
-      <section class="mb-4">
-        <form class="row g-3 align-items-end">
-          <div class="col-md-4">
-            <label for="fromDate" class="form-label">From</label>
-            <input
-              type="datetime-local"
-              class="form-control"
-              id="fromDate"
-              name="from">
+      aria-labelledby="main-tab"
+      tabindex="0"
+    >
+      <!-- Date range controls -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+              <label for="fromDate" class="form-label">From</label>
+              <input
+                type="datetime-local"
+                id="fromDate"
+                class="form-control"
+                placeholder="yyyy-mm-dd --:-- --"
+              />
+            </div>
+            <div class="col-md-4">
+              <label for="toDate" class="form-label">To</label>
+              <input
+                type="datetime-local"
+                id="toDate"
+                class="form-control"
+                placeholder="yyyy-mm-dd --:-- --"
+              />
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <div class="d-flex flex-column w-100">
+                <button
+                  id="applyRangeBtn"
+                  class="btn btn-primary mb-1"
+                  type="button"
+                >
+                  Apply range
+                </button>
+                <small class="text-muted">
+                  If both fields are empty, the dashboard shows the last
+                  24 hours of data.
+                </small>
+              </div>
+            </div>
           </div>
-          <div class="col-md-4">
-            <label for="toDate" class="form-label">To</label>
-            <input
-              type="datetime-local"
-              class="form-control"
-              id="toDate"
-              name="to">
-          </div>
-          <div class="col-md-4">
-            <button
-              class="btn btn-primary"
-              id="applyRangeBtn"
-              type="button">
-              Apply range
-            </button>
-            <p class="form-text mt-2">
-              If both fields are empty, the dashboard shows the last 24 hours of data.
-            </p>
-          </div>
-        </form>
-      </section>
-
-      <!-- Charts -->
-<div class="row mb-4">
-  <div class="col-12">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Temperature history</h5>
-        <div style="height: 260px;">
-          <canvas id="tempChart"></canvas>
         </div>
-        <small class="text-muted">
-          Tin, Tout, and setpoint over time, based on the selected range.
-        </small>
       </div>
-    </div>
-  </div>
-</div>
 
+      <!-- Realtime status card -->
+      <div class="card mb-3" id="realtime-card">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="card-title mb-1">Current status</h5>
+            <small class="text-muted" id="rt-timestamp">
+              Last update: --
+            </small>
+          </div>
+          <div class="d-flex gap-4 text-end">
+            <div>
+              <div class="small text-muted">Tin (°C)</div>
+              <div class="fw-semibold" id="rt-tin">--</div>
+            </div>
+            <div>
+              <div class="small text-muted">Tout (°C)</div>
+              <div class="fw-semibold" id="rt-tout">--</div>
+            </div>
+            <div>
+              <div class="small text-muted">SP (°C)</div>
+              <div class="fw-semibold" id="rt-sp">--</div>
+            </div>
+            <div>
+              <div class="small text-muted">Mode</div>
+              <div class="fw-semibold" id="rt-mode">--</div>
+            </div>
+            <div>
+              <div class="small text-muted">Output</div>
+              <div class="fw-semibold" id="rt-out">--</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Temperature history chart -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Temperature history</h5>
+          <div style="height: 260px;">
+            <canvas id="tempChart"></canvas>
+          </div>
+          <p class="text-muted small mt-2 mb-0">
+            Tin, Tout, and setpoint over time, based on the selected range.
+          </p>
+        </div>
+      </div>
 
       <!-- Recent telemetry table -->
-      <section class="mb-4">
-        <div class="card">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Recent telemetry</span>
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title mb-0">Recent telemetry</h5>
             <span class="badge bg-secondary">
               <span id="samplesCount">{{ snapshots|length }}</span> samples
             </span>
           </div>
+
           <div class="table-responsive">
-            <table class="table table-sm mb-0">
-              <thead>
+            <table class="table table-sm table-striped align-middle mb-0">
+              <thead class="table-light">
                 <tr>
                   <th>Server time</th>
                   <th>Device time</th>
@@ -172,28 +200,28 @@
                       {% if s.server_ts %}
                         {{ s.server_ts|date:"Y-m-d H:i:s" }} UTC
                       {% else %}
-                        –
+                        &ndash;
                       {% endif %}
                     </td>
                     <td>
                       {% if s.device_ts %}
                         {{ s.device_ts|date:"Y-m-d H:i:s" }} UTC
                       {% else %}
-                        –
+                        &ndash;
                       {% endif %}
                     </td>
                     <td>{{ s.temp_inside_c }}</td>
-                    <td>{{ s.temp_outside_c }}</td>
+                    <td>{{ s.temp_outside_c|default_if_none:"" }}</td>
                     <td>{{ s.setpoint_c }}</td>
-                    <td>{{ s.hysteresis_c }}</td>
-                    <td>{{ s.humidity_percent }}</td>
+                    <td>{{ s.hysteresis_c|default_if_none:"" }}</td>
+                    <td>{{ s.humidity_percent|default_if_none:"" }}</td>
                     <td>{{ s.mode }}</td>
                     <td>{{ s.output }}</td>
                   </tr>
                 {% empty %}
                   <tr>
-                    <td colspan="9" class="text-muted text-center py-3">
-                      No telemetry yet for this device.
+                    <td colspan="9" class="text-center text-muted">
+                      No telemetry yet.
                     </td>
                   </tr>
                 {% endfor %}
@@ -201,7 +229,7 @@
             </table>
           </div>
         </div>
-      </section>
+      </div>
     </div>
 
     <!-- Control panel tab -->
@@ -209,104 +237,109 @@
       class="tab-pane fade"
       id="control-tab-pane"
       role="tabpanel"
-      aria-labelledby="control-tab">
+      aria-labelledby="control-tab"
+      tabindex="0"
+    >
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">API key management</h5>
+          <p class="text-muted small">
+            Rotate the device API key or revoke individual keys. Rotating will
+            deactivate all existing keys and create a new active one.
+          </p>
 
-      <section class="mb-4">
-        <div class="card">
-          <div class="card-header">
-            API keys
-          </div>
-          <div class="card-body">
-            <p class="small text-muted">
-              Rotate keys to generate a new API key for the thermostat.
-              Revoke a key to immediately disable it.
-            </p>
+          <!-- Rotate key form -->
+          <form method="post" class="mb-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="rotate" />
+            <button type="submit" class="btn btn-warning">
+              Generate new API key
+            </button>
+            <small class="d-block text-muted mt-2">
+              After rotation, the new key value is shown once at the top of the
+              dashboard. Update your device configuration with the new key.
+            </small>
+          </form>
 
-            <!-- Rotate key form -->
-            <form method="post" class="mb-3">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="rotate">
-              <button class="btn btn-warning btn-sm" type="submit">
-                Rotate API key
-              </button>
-            </form>
-
-            <!-- Keys table -->
-            <div class="table-responsive">
-              <table class="table table-sm mb-0">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Created</th>
-                    <th>Expires</th>
-                    <th>Active</th>
-                    <th></th>
+          <!-- Existing keys table -->
+          <h6 class="mb-2">Existing keys</h6>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th>
+                  <th>Created at</th>
+                  <th>Expires at</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for key in keys %}
+                  <tr class="{% if not key.is_active %}table-light text-muted{% endif %}">
+                    <td>{{ key.id }}</td>
+                    <td>
+                      {% if key.created_at %}
+                        {{ key.created_at|date:"Y-m-d H:i:s" }} UTC
+                      {% else %}
+                        &ndash;
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if key.expires_at %}
+                        {{ key.expires_at|date:"Y-m-d H:i:s" }} UTC
+                      {% else %}
+                        &ndash;
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if key.is_active %}
+                        <span class="badge bg-success">active</span>
+                      {% else %}
+                        <span class="badge bg-secondary">inactive</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end">
+                      {% if key.is_active %}
+                        <form method="post" class="d-inline">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="revoke" />
+                          <input
+                            type="hidden"
+                            name="key_id"
+                            value="{{ key.id }}"
+                          />
+                          <button
+                            type="submit"
+                            class="btn btn-outline-danger btn-sm"
+                          >
+                            Revoke
+                          </button>
+                        </form>
+                      {% else %}
+                        <span class="text-muted small">revoked</span>
+                      {% endif %}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {% for key in keys %}
-                    <tr>
-                      <td>{{ key.id }}</td>
-                      <td>
-                        {% if key.created_at %}
-                          {{ key.created_at|date:"Y-m-d H:i" }} UTC
-                        {% else %}
-                          –
-                        {% endif %}
-                      </td>
-                      <td>
-                        {% if key.expires_at %}
-                          {{ key.expires_at|date:"Y-m-d H:i" }} UTC
-                        {% else %}
-                          –
-                        {% endif %}
-                      </td>
-                      <td>
-                        {% if key.is_active %}
-                          <span class="badge bg-success">Active</span>
-                        {% else %}
-                          <span class="badge bg-secondary">Inactive</span>
-                        {% endif %}
-                      </td>
-                      <td class="text-end">
-                        {% if key.is_active %}
-                          <form method="post" class="d-inline">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="revoke">
-                            <input type="hidden" name="key_id" value="{{ key.id }}">
-                            <button
-                              type="submit"
-                              class="btn btn-outline-danger btn-sm">
-                              Revoke
-                            </button>
-                          </form>
-                        {% endif %}
-                      </td>
-                    </tr>
-                  {% empty %}
-                    <tr>
-                      <td colspan="5" class="text-muted text-center py-3">
-                        No keys for this device yet.
-                      </td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-
+                {% empty %}
+                  <tr>
+                    <td colspan="5" class="text-center text-muted">
+                      No keys yet. Use "Generate new API key" to create one.
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
         </div>
-      </section>
-
+      </div>
     </div>
-
-  </div>  <!-- /.tab-content -->
-</div>    <!-- /.container -->
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
   {{ block.super }}
-  <!-- Chart.js and page-specific JS -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="{% static 'api/js/device_detail.js' %}"></script>
 {% endblock %}
