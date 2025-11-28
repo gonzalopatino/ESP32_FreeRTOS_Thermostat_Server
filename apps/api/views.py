@@ -406,9 +406,15 @@ def recent_telemetry(request):
     device_id = request.GET.get("device_id")
 
     qs = TelemetrySnapshot.objects.all().order_by("-server_ts")
-    if device_id is None and qs.exists():
-        device_id = qs.first().device_id
+
+    if device_id is not None:
+        # Explicit device filter when provided
         qs = qs.filter(device_id=device_id)
+    else:
+        # Default to most recent device_id if none provided
+        if qs.exists():
+            device_id = qs.first().device_id
+            qs = qs.filter(device_id=device_id)
 
     qs = qs[:limit]
 
@@ -430,11 +436,10 @@ def recent_telemetry(request):
                 "humidity_percent": s.humidity_percent,
 
                 # what the ESP32 actually sent, with its timezone offset
-                "device_ts": device_ts_local or (
-                    device_ts_utc.isoformat() if device_ts_utc else None
-                ),
+                "device_ts": device_ts_local
+                or (device_ts_utc.isoformat() if device_ts_utc else None),
 
-                # if you want to keep UTC around for dashboards / SQL
+                # keep UTC around for dashboards / SQL
                 "device_ts_utc": device_ts_utc.isoformat() if device_ts_utc else None,
 
                 "server_ts": s.server_ts.isoformat() if s.server_ts else None,
@@ -448,6 +453,7 @@ def recent_telemetry(request):
             "data": data,
         }
     )
+
 
 
 

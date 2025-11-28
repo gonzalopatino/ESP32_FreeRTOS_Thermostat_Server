@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>Device {{ device.serial_number }} details</title>
+    {% load static %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <h1>Device details for {{ device.serial_number }}</h1>
 
-    {# Flash messages #}
     {% if messages %}
       <div>
         {% for message in messages %}
@@ -70,7 +71,7 @@
                     <button type="submit">Revoke</button>
                   </form>
                 {% else %}
-                  —
+                  -
                 {% endif %}
               </td>
             </tr>
@@ -83,41 +84,49 @@
 
     <hr>
 
+    <h2>Temperature chart (auto updating)</h2>
+    <canvas
+        id="telemetryChart"
+        data-device-serial="{{ device.serial_number }}"
+        width="800"
+        height="300">
+    </canvas>
+
+    <hr>
+
     <h2>Recent telemetry (latest up to 50 samples)</h2>
 
-    {% if snapshots %}
-      <table border="1" cellpadding="4" cellspacing="0">
-        <thead>
+    <table border="1" cellpadding="4" cellspacing="0">
+      <thead>
+        <tr>
+          <th>Server time</th>
+          <th>Device time</th>
+          <th>Mode</th>
+          <th>Tin (°C)</th>
+          <th>Tout (°C)</th>
+          <th>Setpoint (°C)</th>
+          <th>Hysteresis (°C)</th>
+          <th>Humidity (%)</th>
+          <th>Output</th>
+        </tr>
+      </thead>
+      <tbody id="telemetry-table-body">
+        {% for s in snapshots %}
           <tr>
-            <th>Server time</th>
-            <th>Device time</th>
-            <th>Mode</th>
-            <th>Tin (°C)</th>
-            <th>Tout (°C)</th>
-            <th>Setpoint (°C)</th>
-            <th>Hysteresis (°C)</th>
-            <th>Humidity (%)</th>
-            <th>Output</th>
+            <td>{{ s.server_ts }}</td>
+            <td>{{ s.device_ts|default:"-" }}</td>
+            <td>{{ s.mode }}</td>
+            <td>{{ s.temp_inside_c }}</td>
+            <td>{{ s.temp_outside_c|default:"-" }}</td>
+            <td>{{ s.setpoint_c }}</td>
+            <td>{{ s.hysteresis_c|default:"-" }}</td>
+            <td>{{ s.humidity_percent|default:"-" }}</td>
+            <td>{{ s.output|default:"-" }}</td>
           </tr>
-        </thead>
-        <tbody>
-          {% for s in snapshots %}
-            <tr>
-              <td>{{ s.server_ts }}</td>
-              <td>{{ s.device_ts|default:"-" }}</td>
-              <td>{{ s.mode }}</td>
-              <td>{{ s.temp_inside_c }}</td>
-              <td>{{ s.temp_outside_c|default:"-" }}</td>
-              <td>{{ s.setpoint_c }}</td>
-              <td>{{ s.hysteresis_c|default:"-" }}</td>
-              <td>{{ s.humidity_percent|default:"-" }}</td>
-              <td>{{ s.output|default:"-" }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p>No telemetry has been received for this device yet.</p>
-    {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <script src="{% static 'api/js/device_detail.js' %}"></script>
 </body>
 </html>
