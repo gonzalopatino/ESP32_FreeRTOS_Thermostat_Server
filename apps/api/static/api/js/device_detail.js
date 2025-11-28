@@ -16,7 +16,7 @@
 
   const ctx = canvas.getContext("2d");
 
-  // We keep the full timestamps in parallel so tooltips can show them
+  // Full timestamps for tooltip titles
   let telemetryTimestamps = [];
 
   const chartConfig = {
@@ -33,6 +33,11 @@
           label: "Setpoint (°C)",
           data: [],
           tension: 0.2
+        },
+        {
+          label: "Tout (°C)",
+          data: [],
+          tension: 0.2
         }
       ]
     },
@@ -41,7 +46,7 @@
       plugins: {
         tooltip: {
           callbacks: {
-            // Title of the tooltip = full timestamp
+            // Tooltip title: full server_ts with date
             title: function (items) {
               if (!items.length) {
                 return "";
@@ -92,6 +97,7 @@
         const labels = [];
         const tin = [];
         const setpoint = [];
+        const tout = [];
         telemetryTimestamps = [];
 
         const tbody = document.getElementById("telemetry-table-body");
@@ -117,6 +123,7 @@
 
           tin.push(item.temp_inside_c);
           setpoint.push(item.setpoint_c);
+          tout.push(item.temp_outside_c);
 
           const row = document.createElement("tr");
 
@@ -161,6 +168,7 @@
         telemetryChart.data.labels = labels;
         telemetryChart.data.datasets[0].data = tin;
         telemetryChart.data.datasets[1].data = setpoint;
+        telemetryChart.data.datasets[2].data = tout;
         telemetryChart.update();
       })
       .catch((error) => {
