@@ -279,4 +279,25 @@ document.addEventListener("DOMContentLoaded", function () {
       loadTelemetry(false);
     });
   }
+
+  // CSV export - keep it in sync with the date range pickers
+  const exportForm = document.getElementById("exportCsvForm");
+  if (exportForm) {
+    exportForm.addEventListener("submit", function (e) {
+      // We do not preventDefault here; we just prepare the hidden fields
+      // just before the browser submits the GET request.
+
+      // Hidden inputs in the form that will be sent as query parameters
+      const csvStartInput = document.getElementById("csvStart");
+      const csvEndInput = document.getElementById("csvEnd");
+
+      // Use the same values the chart uses:
+      // - If both are empty, server will treat it as "last 24h" or full.
+      // - If both are set, server filters between these datetimes.
+      csvStartInput.value = fromInput.value || "";
+      csvEndInput.value = toInput.value || "";
+    });
+  }
+
+
 });

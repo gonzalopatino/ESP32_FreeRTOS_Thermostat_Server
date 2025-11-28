@@ -135,6 +135,27 @@
         </div>
       </div>
 
+      <!-- Export CSV button - uses hidden form so JS can inject current range -->
+      <div class="mb-3">
+        <form
+          id="exportCsvForm"
+          method="get"
+          action="{% url 'telemetry_export_csv' %}"
+          class="d-inline"
+        >
+          {# Device id is the serial that TelemetrySnapshot.device_id uses #}
+          <input type="hidden" name="device_id" value="{{ device.serial_number }}">
+          {# These will be filled in by JS from the From/To date pickers #}
+          <input type="hidden" name="start" id="csvStart">
+          <input type="hidden" name="end" id="csvEnd">
+
+          <button type="submit" class="btn btn-outline-secondary btn-sm">
+            Export history as CSV
+          </button>
+        </form>
+      </div>
+
+
       <!-- Realtime status card -->
       <div class="card mb-3" id="realtime-card">
         <div class="card-body d-flex justify-content-between align-items-center">

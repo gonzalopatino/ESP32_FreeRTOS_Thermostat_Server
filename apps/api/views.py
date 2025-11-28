@@ -11,10 +11,11 @@ from django.views.decorators.http import require_POST
 from django.utils.timezone import now
 from django.shortcuts import get_object_or_404
 import logging
-
+import csv
+from django.http import HttpResponse
 
 from django.utils.dateparse import parse_datetime
-
+from django.utils import timezone
 
 from django.db.models import Q, Count
 import os
@@ -765,6 +766,103 @@ def telemetry_query(request):
     )
 
     
+@login_required
+def telemetry_export_csv(request):
+    """
+    Export telemetry history for a single device as CSV.
+
+    Query parameters:
+      - device_id: the device serial number (required)
+      - start: optional ISO-ish datetime string (from the datepicker)
+      - end: optional ISO-ish datetime string
+
+    Behavior:
+      - Ensures the device belongs to the logged-in user.
+      - Filters TelemetrySnapshot by that device.
+      - If both start and end are provided, it filters by server_ts
+        between those two instants (you can later switch to device_ts
+        if you prefer device time as the filter).
+      - Returns a streamed CSV file.
+    """
+    device_id = request.GET.get("device_id")
+    start_param = request.GET.get("start")
+    end_param = request.GET.get("end")
+
+    if not device_id:
+        return HttpResponse("Missing device_id", status=400)
+
+    # Ownership check: only allow export if this device belongs to the user.
+    device = Device.objects.filter(
+        serial_number=device_id,
+        owner=request.user
+    ).first()
+
+    if device is None:
+        return HttpResponse("Device not found or not owned by this user.", status=404)
+
+    # Base queryset: all telemetry for this device
+    qs = TelemetrySnapshot.objects.filter(device_id=device.serial_number)
+
+    # Helper to parse datepicker values (which are naive local datetimes)
+    def _parse_picker(value):
+        """
+        Convert the datetime-local string from the browser into an aware
+        datetime in the current server timezone.
+        """
+        if not value:
+            return None
+        dt = parse_datetime(value)
+        if not dt:
+            return None
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(dt, timezone.get_current_timezone())
+        return dt
+
+    start_dt = _parse_picker(start_param)
+    end_dt = _parse_picker(end_param)
+
+    # Apply filtering if both start and end are provided and valid
+    if start_dt and end_dt:
+        qs = qs.filter(server_ts__gte=start_dt, server_ts__lte=end_dt)
+
+    # Order from oldest to newest by server time
+    qs = qs.order_by("server_ts")
+
+    # Prepare CSV response headers
+    filename = f"{device.serial_number}_telemetry.csv"
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+
+    # Header row
+    writer.writerow([
+        "server_ts",
+        "device_ts",
+        "temp_inside_c",
+        "temp_outside_c",
+        "setpoint_c",
+        "hysteresis_c",
+        "humidity_percent",
+        "mode",
+        "output",
+    ])
+
+    # Data rows
+    for s in qs:
+        writer.writerow([
+            s.server_ts.isoformat() if s.server_ts else "",
+            s.device_ts.isoformat() if s.device_ts else "",
+            s.temp_inside_c,
+            s.temp_outside_c,
+            s.setpoint_c,
+            s.hysteresis_c,
+            getattr(s, "humidity_percent", None),
+            s.mode,
+            getattr(s, "output", None),
+        ])
+
+    return response
 
 
 def ping(request):

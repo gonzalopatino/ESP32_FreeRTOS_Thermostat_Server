@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import telemetry_query, ingest_telemetry
 
 urlpatterns = [
     path("ping/", views.ping, name="api-ping"),
@@ -25,6 +26,7 @@ urlpatterns = [
     path("telemetry/", views.telemetry_query, name="telemetry-query"),
     path("telemetry/recent/", views.recent_telemetry, name="recent-telemetry"),
     path("telemetry/query/", views.telemetry_query, name="telemetry_query"),
+    path("telemetry/export/", views.telemetry_export_csv, name="telemetry_export_csv"),
     # New dashboard page
     path(
         "dashboard/devices/",
