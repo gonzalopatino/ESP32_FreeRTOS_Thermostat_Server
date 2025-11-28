@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}About - Thermostat Platform{% endblock %}
+
+{% block content %}
+  <h1 class="mb-3">About this project</h1>
+  <p>
+    This is the Thermostat Cloud platform: a Django + PostgreSQL backend
+    that receives telemetry from ESP32-based thermostats and shows live
+    dashboards for each device.
+  </p>
+  <p>
+    Example metadata (you can wire these later):
+  </p>
+  <ul>
+    <li>Firmware version: <code>v1.0.0</code></li>
+    <li>Backend version: <code>v0.1.0</code></li>
+    <li>Owner: {{ request.user.username }}</li>
+  </ul>
+{% endblock %}

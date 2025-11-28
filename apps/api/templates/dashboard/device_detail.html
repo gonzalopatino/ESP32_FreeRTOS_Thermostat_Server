@@ -1,134 +1,143 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Device {{ device.serial_number }} details</title>
-    {% load static %}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-    <h1>Device details for {{ device.serial_number }}</h1>
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Device {{ device.serial_number }} - Thermostat Platform{% endblock %}
 
-    {% if messages %}
-      <div>
-        {% for message in messages %}
-          <p>{{ message }}</p>
-        {% endfor %}
-      </div>
-    {% endif %}
+{% block extra_head %}
+  {{ block.super }}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
 
-    <p>
-        <strong>Owner:</strong> {{ request.user.username }}<br>
-        <strong>Name:</strong> {{ device.name|default:"(unnamed)" }}<br>
-        <strong>Created at:</strong> {{ device.created_at }}<br>
-        <strong>Last seen:</strong> {{ device.last_seen|default:"never" }}
-    </p>
+{% block content %}
+  <h1 class="mb-3">Device details for {{ device.serial_number }}</h1>
 
-    <p>
-        <a href="{% url 'dashboard_devices' %}">&larr; Back to all devices</a>
-    </p>
+  <p class="mb-3">
+    <strong>Owner:</strong> {{ request.user.username }}<br>
+    <strong>Name:</strong> {{ device.name|default:"(unnamed)" }}<br>
+    <strong>Created at:</strong> {{ device.created_at }}<br>
+    <strong>Last seen:</strong> {{ device.last_seen|default:"never" }}
+  </p>
 
-    <hr>
+  <p>
+    <a href="{% url 'dashboard_devices' %}">&larr; Back to all devices</a>
+  </p>
 
-    <h2>API keys</h2>
+  <hr>
 
-    <form method="post" style="margin-bottom: 1em;">
+  <section class="mb-4">
+    <h2 class="h5 mb-3">API keys</h2>
+
+    <form method="post" class="mb-3">
       {% csrf_token %}
       <input type="hidden" name="action" value="rotate">
-      <button type="submit">Rotate API key (invalidate old keys)</button>
+      <button type="submit" class="btn btn-outline-primary btn-sm">
+        Rotate API key (invalidate old keys)
+      </button>
     </form>
 
     {% if keys %}
-      <table border="1" cellpadding="4" cellspacing="0">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Created at</th>
-            <th>Expires at</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for key in keys %}
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+          <thead class="table-light">
             <tr>
-              <td>{{ key.id }}</td>
-              <td>{{ key.created_at }}</td>
-              <td>{{ key.expires_at }}</td>
-              <td>
-                {% if key.is_active %}
-                  active
-                {% else %}
-                  inactive
-                {% endif %}
-              </td>
-              <td>
-                {% if key.is_active %}
-                  <form method="post" style="display:inline;">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="revoke">
-                    <input type="hidden" name="key_id" value="{{ key.id }}">
-                    <button type="submit">Revoke</button>
-                  </form>
-                {% else %}
-                  -
-                {% endif %}
-              </td>
+              <th scope="col">ID</th>
+              <th scope="col">Created at</th>
+              <th scope="col">Expires at</th>
+              <th scope="col">Status</th>
+              <th scope="col">Actions</th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for key in keys %}
+              <tr>
+                <td>{{ key.id }}</td>
+                <td>{{ key.created_at }}</td>
+                <td>{{ key.expires_at }}</td>
+                <td>
+                  {% if key.is_active %}
+                    <span class="badge bg-success">active</span>
+                  {% else %}
+                    <span class="badge bg-secondary">inactive</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if key.is_active %}
+                    <form method="post" class="d-inline">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="revoke">
+                      <input type="hidden" name="key_id" value="{{ key.id }}">
+                      <button type="submit" class="btn btn-outline-danger btn-sm">
+                        Revoke
+                      </button>
+                    </form>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     {% else %}
       <p>No keys yet for this device.</p>
     {% endif %}
+  </section>
 
-    <hr>
+  <hr>
 
-    <div class="metric-card">
-        <h2>Temperature chart (auto updating)</h2>
+  <section class="mb-4">
+    <div class="metric-card card">
+      <div class="card-body">
+        <h2 class="h5 card-title">Temperature chart (auto updating)</h2>
         <canvas
             id="metric-temperature"
             data-device-serial="{{ device.serial_number }}"
             width="800"
             height="300">
         </canvas>
+      </div>
     </div>
+  </section>
 
-    <hr>
+  <section>
+    <h2 class="h5 mb-3">Recent telemetry (latest up to 50 samples)</h2>
 
-    <h2>Recent telemetry (latest up to 50 samples)</h2>
-
-    <table border="1" cellpadding="4" cellspacing="0">
-      <thead>
-        <tr>
-          <th>Server time</th>
-          <th>Device time</th>
-          <th>Mode</th>
-          <th>Tin (°C)</th>
-          <th>Tout (°C)</th>
-          <th>Setpoint (°C)</th>
-          <th>Hysteresis (°C)</th>
-          <th>Humidity (%)</th>
-          <th>Output</th>
-        </tr>
-      </thead>
-      <tbody id="telemetry-table-body">
-        {% for s in snapshots %}
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle">
+        <thead class="table-light">
           <tr>
-            <td>{{ s.server_ts }}</td>
-            <td>{{ s.device_ts|default:"-" }}</td>
-            <td>{{ s.mode }}</td>
-            <td>{{ s.temp_inside_c }}</td>
-            <td>{{ s.temp_outside_c|default:"-" }}</td>
-            <td>{{ s.setpoint_c }}</td>
-            <td>{{ s.hysteresis_c|default:"-" }}</td>
-            <td>{{ s.humidity_percent|default:"-" }}</td>
-            <td>{{ s.output|default:"-" }}</td>
+            <th>Server time</th>
+            <th>Device time</th>
+            <th>Mode</th>
+            <th>Tin (°C)</th>
+            <th>Tout (°C)</th>
+            <th>Setpoint (°C)</th>
+            <th>Hysteresis (°C)</th>
+            <th>Humidity (%)</th>
+            <th>Output</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        </thead>
+        <tbody id="telemetry-table-body">
+          {% for s in snapshots %}
+            <tr>
+              <td>{{ s.server_ts }}</td>
+              <td>{{ s.device_ts|default:"-" }}</td>
+              <td>{{ s.mode }}</td>
+              <td>{{ s.temp_inside_c }}</td>
+              <td>{{ s.temp_outside_c|default:"-" }}</td>
+              <td>{{ s.setpoint_c }}</td>
+              <td>{{ s.hysteresis_c|default:"-" }}</td>
+              <td>{{ s.humidity_percent|default:"-" }}</td>
+              <td>{{ s.output|default:"-" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}
 
-    <script src="{% static 'api/js/device_detail.js' %}"></script>
-</body>
-</html>
+{% block extra_js %}
+  {{ block.super }}
+  <script src="{% static 'api/js/device_detail.js' %}"></script>
+{% endblock %}

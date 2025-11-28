@@ -1,80 +1,71 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Devices for {{ request.user.username }}</title>
-</head>
-<body>
-    <h1>Devices for {{ request.user.username }}</h1>
+{% extends "base.html" %}
 
-    {# Flash messages: success / error / info #}
-    {% if messages %}
-      <div>
-        {% for message in messages %}
-          <p>{{ message }}</p>
-        {% endfor %}
+{% block title %}Dashboard - Thermostat Platform{% endblock %}
+
+{% block content %}
+  <h1 class="mb-4">Devices for {{ request.user.username }}</h1>
+
+  <section id="register-device" class="mb-4">
+    <div class="card">
+      <div class="card-body">
+        <h2 class="h5 card-title mb-3">Register new device</h2>
+        <form method="post" class="row g-3">
+          {% csrf_token %}
+          <div class="col-md-6">
+            <label for="id_serial_number" class="form-label">Serial number</label>
+            <input type="text" id="id_serial_number" name="serial_number"
+                   class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label for="id_name" class="form-label">Name (optional)</label>
+            <input type="text" id="id_name" name="name" class="form-control">
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary">
+              Register device
+            </button>
+          </div>
+        </form>
       </div>
-    {% endif %}
+    </div>
+  </section>
 
-    {# Logout button #}
-    <form method="post" action="{% url 'logout' %}">
-      {% csrf_token %}
-      <button type="submit">Logout</button>
-    </form>
-
-    <hr>
-
-    <h2>Register new device</h2>
-
-    <form method="post">
-      {% csrf_token %}
-      <div>
-        <label for="id_serial_number">Serial number:</label>
-        <input type="text" id="id_serial_number" name="serial_number" required>
-      </div>
-      <div>
-        <label for="id_name">Name (optional):</label>
-        <input type="text" id="id_name" name="name">
-      </div>
-      <button type="submit">Register device</button>
-    </form>
-
-    <hr>
-
-    <h2>Your devices</h2>
+  <section>
+    <h2 class="h5 mb-3">Your devices</h2>
 
     {% if devices %}
-      <table border="1" cellpadding="4" cellspacing="0">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Serial number</th>
-            <th>Name</th>
-            <th>Created at</th>
-            <th>Last seen</th>
-            <th>Active keys</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for device in devices %}
+      <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+          <thead class="table-light">
             <tr>
-              <td>{{ device.id }}</td>
-              <td>
-                <a href="{% url 'dashboard_device_detail' device.id %}">
-                  {{ device.serial_number }}
-                </a>
-              </td>
-              <td>{{ device.name|default:"(unnamed)" }}</td>
-              <td>{{ device.created_at }}</td>
-              <td>{{ device.last_seen|default:"never" }}</td>
-              <td>{{ device.active_key_count }}</td>
-
+              <th scope="col">ID</th>
+              <th scope="col">Serial number</th>
+              <th scope="col">Name</th>
+              <th scope="col">Created at</th>
+              <th scope="col">Last seen</th>
+              <th scope="col">Active keys</th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for device in devices %}
+              <tr>
+                <td>{{ device.id }}</td>
+                <td>
+                  <a href="{% url 'dashboard_device_detail' device.id %}">
+                    {{ device.serial_number }}
+                  </a>
+                </td>
+                <td>{{ device.name|default:"(unnamed)" }}</td>
+                <td>{{ device.created_at }}</td>
+                <td>{{ device.last_seen|default:"never" }}</td>
+                <td>{{ device.active_key_count }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     {% else %}
       <p>You do not have any devices yet. Use the form above to register one.</p>
     {% endif %}
-</body>
-</html>
+  </section>
+{% endblock %}

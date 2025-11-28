@@ -34,6 +34,8 @@ urlpatterns = [
         name="dashboard_device_detail",
     ),
     
+    path("about/", api_views.about, name="about"),
+
      # API auth (for Postman / programmatic)
     path('admin/', admin.site.urls),
     path('api/health/', health),

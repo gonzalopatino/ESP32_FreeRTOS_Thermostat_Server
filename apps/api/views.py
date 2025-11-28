@@ -79,7 +79,7 @@ def dashboard_devices(request):
             )
         )
         .prefetch_related("api_keys")
-        .order_by("created_at")
+        .order_by("id")
     )
 
     if request.method == "POST":
@@ -920,3 +920,7 @@ def list_devices(request):
         }
     )
 
+@login_required
+def about(request):
+    """Simple About / metadata page."""
+    return render(request, "about.html")
