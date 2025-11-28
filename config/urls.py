@@ -26,12 +26,17 @@ urlpatterns = [
      # Auth HTML views
     path("accounts/register/", api_views.register_page, name="register"),
     path("accounts/login/", auth_views.LoginView.as_view( template_name="registration/login.html"),name="login",),
-    path("accounts/logout/", api_views.logout_view, name="logout",),
+    path("accounts/logout/", api_views.logout_view, name="logout_view",),
     path("dashboard/devices/", api_views.dashboard_devices, name="dashboard_devices",),
     path(
         "dashboard/devices/<int:device_id>/",
         api_views.dashboard_device_detail,
         name="dashboard_device_detail",
+    ),
+    path(
+        "dashboard/devices/register/",
+        api_views.dashboard_register_device,
+        name="dashboard_register_device",
     ),
     
     path("about/", api_views.about, name="about"),

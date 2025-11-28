@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Register new device{% endblock %}
+
+{% block content %}
+  <h1 class="mb-4">Register new device</h1>
+
+  <form method="post" class="card p-3 shadow-sm">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="id_serial_number" class="form-label">Serial number</label>
+      <input
+        type="text"
+        id="id_serial_number"
+        name="serial_number"
+        class="form-control"
+        required
+      >
+    </div>
+    <div class="mb-3">
+      <label for="id_name" class="form-label">Name (optional)</label>
+      <input
+        type="text"
+        id="id_name"
+        name="name"
+        class="form-control"
+      >
+    </div>
+    <button type="submit" class="btn btn-primary">
+      Register device
+    </button>
+  </form>
+{% endblock %}
