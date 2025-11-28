@@ -16,6 +16,9 @@
 
   const ctx = canvas.getContext("2d");
 
+  // We keep the full timestamps in parallel so tooltips can show them
+  let telemetryTimestamps = [];
+
   const chartConfig = {
     type: "line",
     data: {
@@ -35,11 +38,28 @@
     },
     options: {
       responsive: false,
+      plugins: {
+        tooltip: {
+          callbacks: {
+            // Title of the tooltip = full timestamp
+            title: function (items) {
+              if (!items.length) {
+                return "";
+              }
+              const idx = items[0].dataIndex;
+              return telemetryTimestamps[idx] || "";
+            }
+          }
+        }
+      },
       scales: {
         x: {
           title: {
             display: true,
             text: "Time"
+          },
+          ticks: {
+            maxTicksLimit: 6
           }
         },
         y: {
@@ -72,6 +92,7 @@
         const labels = [];
         const tin = [];
         const setpoint = [];
+        telemetryTimestamps = [];
 
         const tbody = document.getElementById("telemetry-table-body");
         if (!tbody) {
@@ -80,8 +101,20 @@
         tbody.innerHTML = "";
 
         data.forEach((item) => {
-          const ts = item.server_ts || "";
-          labels.push(ts);
+          const iso = item.server_ts;
+          let label = "";
+          if (iso) {
+            const d = new Date(iso);
+            // Axis label: "HH:MM" 24h, no seconds
+            label = d.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false
+            });
+          }
+          labels.push(label);
+          telemetryTimestamps.push(item.server_ts || "");
+
           tin.push(item.temp_inside_c);
           setpoint.push(item.setpoint_c);
 
