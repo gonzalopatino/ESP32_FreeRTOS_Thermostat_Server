@@ -229,6 +229,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Initial loads
   loadTelemetry(true);
+ 
+
   loadRealtime();
 
   // Realtime poll every 5 seconds

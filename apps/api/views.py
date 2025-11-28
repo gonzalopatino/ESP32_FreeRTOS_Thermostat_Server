@@ -646,14 +646,27 @@ def telemetry_query(request):
     end_param = request.GET.get("end")
     range_param = request.GET.get("range")
 
+    def _parse_local(dt_str):
+        """
+        Parse a datetime-local string from the browser and make it timezone-aware
+        in the current Django timezone.
+        """
+        dt = parse_datetime(dt_str)
+        if not dt:
+            return None
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(dt, timezone.get_current_timezone())
+        return dt
+
+    # Explicit start / end coming from the datepicker
     if start_param:
-        start_dt = parse_datetime(start_param)
+        start_dt = _parse_local(start_param)
         if not start_dt:
             return HttpResponseBadRequest("Invalid 'start' datetime")
         qs = qs.filter(server_ts__gte=start_dt)
 
     if end_param:
-        end_dt = parse_datetime(end_param)
+        end_dt = _parse_local(end_param)
         if not end_dt:
             return HttpResponseBadRequest("Invalid 'end' datetime")
         qs = qs.filter(server_ts__lte=end_dt)
@@ -663,10 +676,10 @@ def telemetry_query(request):
         try:
             if range_param.endswith("h"):
                 hours = float(range_param[:-1])
-                window_start = now() - timedelta(hours=hours)
+                window_start = timezone.now() - timedelta(hours=hours)
             elif range_param.endswith("d"):
                 days = float(range_param[:-1])
-                window_start = now() - timedelta(days=days)
+                window_start = timezone.now() - timedelta(days=days)
             else:
                 return HttpResponseBadRequest(
                     "Invalid 'range' format, use like '24h' or '7d'"
@@ -677,19 +690,19 @@ def telemetry_query(request):
             )
         qs = qs.filter(server_ts__gte=window_start)
 
-    # Latest vs limit
+    # Latest vs history
     latest_flag = _parse_bool(request.GET.get("latest"))
     if latest_flag:
         # realtime card: newest snapshot only
         qs = qs.order_by("-server_ts")[:1]
     else:
+        # history / chart: oldest → newest
         limit_param = request.GET.get("limit")
         try:
             limit = int(limit_param) if limit_param else 100
         except ValueError:
             return HttpResponseBadRequest("Invalid 'limit', must be an integer")
         limit = max(1, min(limit, 1000))
-        # history / chart: oldest → newest
         qs = qs.order_by("server_ts")[:limit]
 
     # Serialize snapshots
@@ -719,6 +732,7 @@ def telemetry_query(request):
         }
     )
 
+    
 
 
 def ping(request):
