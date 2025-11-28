@@ -48,7 +48,7 @@ document.addEventListener("DOMContentLoaded", function () {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false, // use the 260px from CSS
+        maintainAspectRatio: false,
         interaction: {
           mode: "index",
           intersect: false,
@@ -79,7 +79,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!isoString) return "";
     const d = new Date(isoString);
     if (Number.isNaN(d.getTime())) {
-      // if parsing fails, just show raw string
       return isoString;
     }
     const pad = (n) => (n < 10 ? "0" + n : "" + n);
@@ -87,13 +86,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const dd = pad(d.getDate());
     const hh = pad(d.getHours());
     const min = pad(d.getMinutes());
-    // Example: 11-28 05:31
     return `${mm}-${dd} ${hh}:${min}`;
   }
 
   async function loadTelemetry(useDefaultRange = false) {
     const params = new URLSearchParams();
-    // your TelemetrySnapshot.device_id stores the serial string
     params.append("device_id", serial);
 
     const fromVal = fromInput.value;
@@ -103,16 +100,26 @@ document.addEventListener("DOMContentLoaded", function () {
       params.append("start", fromVal);
       params.append("end", toVal);
     } else if (useDefaultRange) {
-      // backend treats 'range=24h' as “last 24 hours”
       params.append("range", "24h");
     }
 
-    const resp = await fetch(`${telemetryUrl}?${params.toString()}`, {
-      headers: { "X-Requested-With": "XMLHttpRequest" },
-    });
+    const url =
+      params.toString().length > 0
+        ? `${telemetryUrl}?${params.toString()}`
+        : telemetryUrl;
+
+    let resp;
+    try {
+      resp = await fetch(url, {
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      });
+    } catch (err) {
+      console.error("Failed to fetch telemetry:", err);
+      return;
+    }
 
     if (!resp.ok) {
-      console.error("Failed to load telemetry", resp.status);
+      console.error("Telemetry request failed with status", resp.status);
       return;
     }
 
@@ -143,6 +150,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (applyBtn) {
     applyBtn.addEventListener("click", function () {
+      const fromVal = fromInput.value;
+      const toVal = toInput.value;
+
+      // Case 1: both empty, treat as default 24h
+      if (!fromVal && !toVal) {
+        loadTelemetry(true);
+        return;
+      }
+
+      // Case 2: only one set, block and nag
+      if (!fromVal || !toVal) {
+        alert(
+          "Please set both From and To, or leave both empty to show the last 24 hours."
+        );
+        return;
+      }
+
+      // Case 3: both set, use explicit range
       loadTelemetry(false);
     });
   }
