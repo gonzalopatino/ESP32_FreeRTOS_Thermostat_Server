@@ -340,7 +340,7 @@ document.addEventListener("DOMContentLoaded", function () {
   loadRealtimeChart();    // new realtime chart
 
   // Realtime poll every 5 seconds
-  setInterval(loadRealtime, 5000);
+  setInterval(loadRealtime, 15000);
   setInterval(loadRealtimeChart, 15000); // realtime chart every 15 s
 
   // Apply button behavior
