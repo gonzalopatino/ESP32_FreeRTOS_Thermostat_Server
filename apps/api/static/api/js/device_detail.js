@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const applyBtn = document.getElementById("applyRangeBtn");
 
   const tempCtx = document.getElementById("tempChart");
+  const rtTempCtx = document.getElementById("rtTempChart"); // new realtime chart vanvas
 
   // Realtime card elements
   const rtCard = document.getElementById("realtime-card");
@@ -23,6 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const rtOut = document.getElementById("rt-out");
 
   let tempChart = null;
+  let rtTempChart = null; //new: realtime chart instance
 
   function createTempChart(ctx) {
     if (!ctx) return null;
@@ -81,8 +83,13 @@ document.addEventListener("DOMContentLoaded", function () {
       },
     });
   }
-
+  //History chart instance
   tempChart = createTempChart(tempCtx);
+
+  //Realtime chart instance
+   if (rtTempCtx) {
+    rtTempChart = createTempChart(rtTempCtx);
+  }
 
   function formatServerTimeForChart(isoString) {
   if (!isoString) return "";
@@ -190,6 +197,87 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+
+    /**
+   * Load realtime chart data from /api/telemetry/recent/.
+   * - Uses last 50 samples from the backend for this device.
+   * - Filters to samples in the last 24 hours relative to browser time.
+   * - Updates rtTempChart if available.
+   */
+  async function loadRealtimeChart() {
+    if (!rtTempChart) {
+      return;
+    }
+
+    const params = new URLSearchParams();
+    params.append("device_id", serial);
+    params.append("limit", "50"); // last 50 samples
+
+    const url = `/api/telemetry/recent/?${params.toString()}`;
+
+    let resp;
+    try {
+      resp = await fetch(url, {
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      });
+    } catch (err) {
+      console.warn("Failed to fetch realtime chart data:", err);
+      return;
+    }
+
+    if (!resp.ok) {
+      console.warn(
+        "Realtime chart telemetry request failed with status",
+        resp.status
+      );
+      return;
+    }
+
+    const payload = await resp.json();
+
+    // Support multiple response shapes: {results: [...]}, {data: [...]}, or a plain array.
+    const rows =
+      (payload && (payload.results || payload.data)) ||
+      (Array.isArray(payload) ? payload : []);
+
+    if (!rows.length) {
+      // Nothing to plot yet.
+      return;
+    }
+
+    // Backend typically returns newest first (-server_ts). For charting we need chronological order.
+    const chronological = rows.slice().reverse();
+
+    // Compute cutoff for the last 24 hours.
+    const now = new Date();
+    const cutoffMs = now.getTime() - 24 * 60 * 60 * 1000;
+
+    // Filter out samples older than 24 hours. If all are older, we will fall back to the full set.
+    const recentData = chronological.filter((s) => {
+      const ts = s.server_ts ? new Date(s.server_ts) : null;
+      if (!ts || isNaN(ts.getTime())) {
+        return false;
+      }
+      return ts.getTime() >= cutoffMs;
+    });
+
+    // If we dropped everything by filtering, show whatever we have so the chart is not blank.
+    const data = recentData.length > 0 ? recentData : chronological;
+
+    const labels = data.map((s) => formatServerTimeForChart(s.server_ts));
+    const tin = data.map((s) => s.temp_inside_c);
+    const tout = data.map((s) => s.temp_outside_c);
+    const sp = data.map((s) => s.setpoint_c);
+
+    rtTempChart.data.labels = labels;
+    rtTempChart.data.datasets[0].data = tin;
+    rtTempChart.data.datasets[1].data = tout;
+    rtTempChart.data.datasets[2].data = sp;
+    rtTempChart.update();
+  }
+
   // Realtime telemetry (latest sample every 5 seconds)
   async function loadRealtime() {
     if (!rtCard) {
@@ -248,12 +336,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Initial loads
   loadTelemetry(true);
- 
-
   loadRealtime();
+  loadRealtimeChart();    // new realtime chart
 
   // Realtime poll every 5 seconds
   setInterval(loadRealtime, 5000);
+  setInterval(loadRealtimeChart, 15000); // realtime chart every 15 s
 
   // Apply button behavior
   if (applyBtn) {

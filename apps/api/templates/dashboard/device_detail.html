@@ -190,6 +190,20 @@
         </div>
       </div>
 
+      <!-- Realtime temperature chart -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Realtime temperature (last 50 samples)</h5>
+          <div style="height: 220px;">
+            <canvas id="rtTempChart"></canvas>
+          </div>
+          <p class="text-muted small mt-2 mb-0">
+            Auto refreshing every 15 seconds using the most recent samples,
+            clamped to the last 24 hours.
+          </p>
+        </div>
+      </div>
+
       <!-- Temperature history chart -->
       <div class="card mb-4">
         <div class="card-body">
