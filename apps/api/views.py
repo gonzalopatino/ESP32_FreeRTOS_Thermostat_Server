@@ -766,6 +766,10 @@ def telemetry_query(request):
     )
 
     
+
+
+...
+
 @login_required
 def telemetry_export_csv(request):
     """
@@ -773,16 +777,16 @@ def telemetry_export_csv(request):
 
     Query parameters:
       - device_id: the device serial number (required)
-      - start: optional ISO-ish datetime string (from the datepicker)
-      - end: optional ISO-ish datetime string
+      - start: optional datetime string from the datepicker (datetime-local)
+      - end: optional datetime string from the datepicker
 
     Behavior:
       - Ensures the device belongs to the logged-in user.
       - Filters TelemetrySnapshot by that device.
-      - If both start and end are provided, it filters by server_ts
-        between those two instants (you can later switch to device_ts
-        if you prefer device time as the filter).
-      - Returns a streamed CSV file.
+      - If start is present, filter server_ts >= start.
+      - If end is present,   filter server_ts <= end.
+      - If neither is present, default to the last 24 hours
+        (same as the chart’s default range).
     """
     device_id = request.GET.get("device_id")
     start_param = request.GET.get("start")
@@ -791,19 +795,22 @@ def telemetry_export_csv(request):
     if not device_id:
         return HttpResponse("Missing device_id", status=400)
 
-    # Ownership check: only allow export if this device belongs to the user.
+    # Only allow exporting devices owned by the logged-in user
     device = Device.objects.filter(
         serial_number=device_id,
-        owner=request.user
+        owner=request.user,
     ).first()
 
     if device is None:
-        return HttpResponse("Device not found or not owned by this user.", status=404)
+        return HttpResponse(
+            "Device not found or not owned by this user.",
+            status=404,
+        )
 
     # Base queryset: all telemetry for this device
     qs = TelemetrySnapshot.objects.filter(device_id=device.serial_number)
 
-    # Helper to parse datepicker values (which are naive local datetimes)
+    # Helper to parse datetime-local values from the browser
     def _parse_picker(value):
         """
         Convert the datetime-local string from the browser into an aware
@@ -821,14 +828,26 @@ def telemetry_export_csv(request):
     start_dt = _parse_picker(start_param)
     end_dt = _parse_picker(end_param)
 
-    # Apply filtering if both start and end are provided and valid
-    if start_dt and end_dt:
-        qs = qs.filter(server_ts__gte=start_dt, server_ts__lte=end_dt)
+    # Apply filters similar to telemetry_query
+    if start_param:
+        if not start_dt:
+            return HttpResponse("Invalid 'start' datetime", status=400)
+        qs = qs.filter(server_ts__gte=start_dt)
 
-    # Order from oldest to newest by server time
+    if end_param:
+        if not end_dt:
+            return HttpResponse("Invalid 'end' datetime", status=400)
+        qs = qs.filter(server_ts__lte=end_dt)
+
+    # If no explicit range was provided, default to last 24 hours
+    if not start_param and not end_param:
+        window_start = timezone.now() - timedelta(hours=24)
+        qs = qs.filter(server_ts__gte=window_start)
+
+    # Order from oldest to newest
     qs = qs.order_by("server_ts")
 
-    # Prepare CSV response headers
+    # Prepare CSV response
     filename = f"{device.serial_number}_telemetry.csv"
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
@@ -836,33 +855,38 @@ def telemetry_export_csv(request):
     writer = csv.writer(response)
 
     # Header row
-    writer.writerow([
-        "server_ts",
-        "device_ts",
-        "temp_inside_c",
-        "temp_outside_c",
-        "setpoint_c",
-        "hysteresis_c",
-        "humidity_percent",
-        "mode",
-        "output",
-    ])
+    writer.writerow(
+        [
+            "server_ts",
+            "device_ts",
+            "temp_inside_c",
+            "temp_outside_c",
+            "setpoint_c",
+            "hysteresis_c",
+            "humidity_percent",
+            "mode",
+            "output",
+        ]
+    )
 
     # Data rows
     for s in qs:
-        writer.writerow([
-            s.server_ts.isoformat() if s.server_ts else "",
-            s.device_ts.isoformat() if s.device_ts else "",
-            s.temp_inside_c,
-            s.temp_outside_c,
-            s.setpoint_c,
-            s.hysteresis_c,
-            getattr(s, "humidity_percent", None),
-            s.mode,
-            getattr(s, "output", None),
-        ])
+        writer.writerow(
+            [
+                s.server_ts.isoformat() if s.server_ts else "",
+                s.device_ts.isoformat() if s.device_ts else "",
+                s.temp_inside_c,
+                s.temp_outside_c,
+                s.setpoint_c,
+                s.hysteresis_c,
+                getattr(s, "humidity_percent", None),
+                s.mode,
+                getattr(s, "output", None),
+            ]
+        )
 
     return response
+
 
 
 def ping(request):
