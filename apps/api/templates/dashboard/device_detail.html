@@ -148,7 +148,9 @@
           {# These will be filled in by JS from the From/To date pickers #}
           <input type="hidden" name="start" id="csvStart">
           <input type="hidden" name="end" id="csvEnd">
-
+          <!-- NEW: browser timezone name, e.g. America/Vancouver -->
+          <input type="hidden" name="tz" id="csvTz">
+          
           <button type="submit" class="btn btn-outline-secondary btn-sm">
             Export history as CSV
           </button>

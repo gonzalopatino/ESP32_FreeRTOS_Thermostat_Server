@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404
 import logging
 import csv
 from django.http import HttpResponse
+from zoneinfo import ZoneInfo
 
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
@@ -772,6 +773,8 @@ def telemetry_query(request):
 
 ...
 
+from zoneinfo import ZoneInfo
+
 @login_required
 def telemetry_export_csv(request):
     """
@@ -779,16 +782,9 @@ def telemetry_export_csv(request):
 
     Query parameters:
       - device_id: the device serial number (required)
-      - start: optional datetime string from the datepicker (datetime-local)
-      - end: optional datetime string from the datepicker
-
-    Behavior:
-      - Ensures the device belongs to the logged-in user.
-      - Filters TelemetrySnapshot by that device.
-      - If start is present, filter server_ts >= start.
-      - If end is present,   filter server_ts <= end.
-      - If neither is present, default to the last 24 hours
-        (same as the chart’s default range).
+      - start: optional datetime-local from the datepicker
+      - end: optional datetime-local from the datepicker
+      - tz: optional IANA timezone name (e.g. America/Vancouver)
     """
     device_id = request.GET.get("device_id")
     start_param = request.GET.get("start")
@@ -797,46 +793,43 @@ def telemetry_export_csv(request):
     if not device_id:
         return HttpResponse("Missing device_id", status=400)
 
-    # Only allow exporting devices owned by the logged-in user
+    # Make sure this device belongs to the logged-in user
     device = Device.objects.filter(
         serial_number=device_id,
         owner=request.user,
     ).first()
-
     if device is None:
-        return HttpResponse(
-            "Device not found or not owned by this user.",
-            status=404,
-        )
+        return HttpResponse("Device not found or not owned", status=404)
 
-    # Base queryset: all telemetry for this device
+    # Base queryset
     qs = TelemetrySnapshot.objects.filter(device_id=device.serial_number)
 
+    # Timezone for "local" columns
+    tz_name = request.GET.get("tz")
+    if tz_name:
+        try:
+            local_tz = ZoneInfo(tz_name)
+        except Exception:
+            # Fallback instead of 400
+            local_tz = timezone.get_current_timezone()
+    else:
+        local_tz = timezone.get_current_timezone()
 
-
-   
-
-
-
-    # Helper to parse datetime-local values from the browser
+    # Parse datetime-local strings from the browser and make them aware
     def _parse_picker(value):
-        """
-        Convert the datetime-local string from the browser into an aware
-        datetime in the current server timezone.
-        """
         if not value:
             return None
         dt = parse_datetime(value)
         if not dt:
             return None
         if timezone.is_naive(dt):
-            dt = timezone.make_aware(dt, timezone.get_current_timezone())
+            dt = timezone.make_aware(dt, local_tz)
         return dt
 
     start_dt = _parse_picker(start_param)
     end_dt = _parse_picker(end_param)
 
-    # Apply filters similar to telemetry_query
+    # Apply filters
     if start_param:
         if not start_dt:
             return HttpResponse("Invalid 'start' datetime", status=400)
@@ -847,12 +840,11 @@ def telemetry_export_csv(request):
             return HttpResponse("Invalid 'end' datetime", status=400)
         qs = qs.filter(server_ts__lte=end_dt)
 
-    # If no explicit range was provided, default to last 24 hours
+    # Default to last 24h if no range picked
     if not start_param and not end_param:
         window_start = timezone.now() - timedelta(hours=24)
         qs = qs.filter(server_ts__gte=window_start)
 
-    # Order from oldest to newest
     qs = qs.order_by("server_ts")
 
     # Prepare CSV response
@@ -862,7 +854,7 @@ def telemetry_export_csv(request):
 
     writer = csv.writer(response)
 
-    # Header ro
+    # Header row
     writer.writerow(
         [
             "server_ts_utc",
@@ -879,24 +871,23 @@ def telemetry_export_csv(request):
         ]
     )
 
-
     # Data rows
     for s in qs:
-        # Server timestamp: UTC and localized
+        # Server timestamps
         if s.server_ts:
             server_ts_utc = s.server_ts.isoformat()
             server_ts_local = timezone.localtime(
-            s.server_ts
+                s.server_ts, local_tz
             ).strftime("%Y-%m-%d %H:%M:%S")
         else:
             server_ts_utc = ""
             server_ts_local = ""
 
-        # Device timestamp: UTC and localized
+        # Device timestamps
         if s.device_ts:
             device_ts_utc = s.device_ts.isoformat()
             device_ts_local = timezone.localtime(
-            s.device_ts
+                s.device_ts, local_tz
             ).strftime("%Y-%m-%d %H:%M:%S")
         else:
             device_ts_utc = ""
@@ -912,14 +903,13 @@ def telemetry_export_csv(request):
                 s.temp_outside_c,
                 s.setpoint_c,
                 s.hysteresis_c,
-                getattr(s, "humidity_percent", None),
+                s.humidity_percent,
                 s.mode,
-                getattr(s, "output", None),
+                s.output,
             ]
         )
+
     return response
-
-
 
 def ping(request):
     return JsonResponse(
