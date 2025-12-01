@@ -1581,6 +1581,21 @@ def _parse_bool(value: str) -> bool:
     return value.lower() in ("1", "true", "yes", "y", "on")
 
 
+def _parse_local(dt_str):
+    """
+    Parse a datetime-local string (from the browser) and make it
+    timezone-aware in the current Django timezone.
+    """
+    if not dt_str:
+        return None
+    dt = parse_datetime(dt_str)
+    if not dt:
+        return None
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, timezone.get_current_timezone())
+    return dt
+
+
 def telemetry_query(request):
     if request.method != "GET":
         return HttpResponseBadRequest("Only GET is allowed")
@@ -1598,13 +1613,13 @@ def telemetry_query(request):
     range_param = request.GET.get("range")
 
     if start_param:
-        start_dt = parse_datetime(start_param)
+        start_dt = _parse_local(start_param)
         if not start_dt:
             return HttpResponseBadRequest("Invalid 'start' datetime")
         qs = qs.filter(server_ts__gte=start_dt)
 
     if end_param:
-        end_dt = parse_datetime(end_param)
+        end_dt = _parse_local(end_param)
         if not end_dt:
             return HttpResponseBadRequest("Invalid 'end' datetime")
         qs = qs.filter(server_ts__lte=end_dt)
