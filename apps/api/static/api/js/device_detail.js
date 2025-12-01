@@ -123,6 +123,42 @@ document.addEventListener("DOMContentLoaded", function () {
     return `${mm}-${dd} ${hh}:${min}`;
   }
 
+    function toLocalIsoWithOffset(dtLocal) {
+    // dtLocal is a string from <input type="datetime-local">, e.g. "2025-11-29T20:10"
+    if (!dtLocal) return "";
+
+    // This treats it as local time in the browser timezone
+    const d = new Date(dtLocal);
+    if (Number.isNaN(d.getTime())) {
+        return "";
+    }
+
+    const pad = (n) => String(n).padStart(2, "0");
+
+    const year = d.getFullYear();
+    const month = pad(d.getMonth() + 1);
+    const day = pad(d.getDate());
+    const hours = pad(d.getHours());
+    const minutes = pad(d.getMinutes());
+    const seconds = pad(d.getSeconds());
+
+    // getTimezoneOffset returns minutes *behind* UTC (e.g. 480 for UTC-8)
+    const offsetMinutes = d.getTimezoneOffset() * -1;
+    const sign = offsetMinutes >= 0 ? "+" : "-";
+    const absMinutes = Math.abs(offsetMinutes);
+    const offsetHours = pad(Math.floor(absMinutes / 60));
+    const offsetMins = pad(absMinutes % 60);
+
+    // Example: "2025-11-29T20:10:00-08:00"
+    return (
+        `${year}-${month}-${day}` +
+        `T${hours}:${minutes}:${seconds}` +
+        `${sign}${offsetHours}:${offsetMins}`
+    );
+  }
+  
+
+
   async function loadTelemetry(useDefaultRange = false) {
     const params = new URLSearchParams();
     params.append("device_id", serial);
@@ -131,11 +167,18 @@ document.addEventListener("DOMContentLoaded", function () {
     const toVal = toInput.value;
 
     if (fromVal && toVal) {
-      params.append("start", fromVal);
-      params.append("end", toVal);
+
+      // Convert browser datetime-local into ISO with timezone offset
+      const startIso = toLocalIsoWithOffset(fromVal);
+      const endIso = toLocalIsoWithOffset(toVal);
+      if(startIso && endIso) {
+        params.append("start", startIso);
+        params.append("end", endIso);
+        } 
+        
     } else if (useDefaultRange) {
       params.append("range", "24h");
-    }
+      }
 
     const url =
       params.toString().length > 0
@@ -421,11 +464,14 @@ async function loadRealtimeChart() {
       const csvEndInput = document.getElementById("csvEnd");
       const csvTzInput = document.getElementById("csvTz");
 
-      // Use the same values the chart uses:
-      // - If both are empty, server will treat it as "last 24h" or full.
-      // - If both are set, server filters between these datetimes.
-      csvStartInput.value = fromInput.value || "";
-      csvEndInput.value = toInput.value || "";
+      const fromVal = fromInput.value;
+      const toVal = toInput.value;
+
+      // Same behavior as chart:
+      // - Empty: backend uses last 24h
+      // - Both set: explicit range in browser local time with offset
+      csvStartInput.value = fromVal ? toLocalIsoWithOffset(fromVal) : "";
+      csvEndInput.value = toVal ? toLocalIsoWithOffset(toVal) : "";
 
       // NEW: put browser timezone name into tz param, e.g. "America/Vancouver"
       if (csvTzInput) {
