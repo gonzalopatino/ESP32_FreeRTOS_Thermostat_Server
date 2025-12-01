@@ -20,10 +20,17 @@ from .views import health
 
 from django.contrib.auth import views as auth_views
 from apps.api import views as api_views
+from django.shortcuts import redirect
+
+
+def root_redirect(request):
+    return redirect("login")  # uses the name="login" URL
+
 
 urlpatterns = [
     
      # Auth HTML views
+    path("", root_redirect, name="root-redirect"),
     path("accounts/register/", api_views.register_page, name="register"),
     path("accounts/login/", auth_views.LoginView.as_view( template_name="registration/login.html"),name="login",),
     path("accounts/logout/", api_views.logout_view, name="logout_view",),
