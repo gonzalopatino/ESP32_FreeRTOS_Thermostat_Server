@@ -54,6 +54,41 @@ SESSION_SAVE_EVERY_REQUEST = True
 
 
 
+# ------------------------------------------------------------------------------
+# Security and HTTPS settings
+# These only apply when DEBUG is False (production).
+# In development, you usually run over plain HTTP, so keep DEBUG = True.
+# ------------------------------------------------------------------------------
+
+if not DEBUG:
+    # Redirect all HTTP requests to HTTPS
+    SECURE_SSL_REDIRECT = True
+
+    # Mark cookies as "secure" so they are only sent over HTTPS
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # HTTP Strict Transport Security:
+    # Tell browsers to always use HTTPS for your domain
+    #  - 31536000 seconds = 1 year
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    # Mitigate referrer leakage
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+
+    # If you are behind a reverse proxy that sets X-Forwarded-Proto, tell Django to trust it.
+    # Example: Nginx config using 'proxy_set_header X-Forwarded-Proto https;'
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+
+
+
+
+
+
+
 
 
 # Application definition
