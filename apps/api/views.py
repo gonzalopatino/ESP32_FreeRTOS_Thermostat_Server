@@ -287,12 +287,8 @@ def dashboard_device_detail(request, device_id: int):
             )
             return redirect("dashboard_devices")
 
-    # GET (or fallthrough after POST handling) – show device info and telemetry
-    snapshots = (
-        TelemetrySnapshot.objects
-        .filter(device_id=device.serial_number)
-        .order_by("-server_ts")[:50]
-    )
+     # GET (or fallthrough after POST handling) – show device info and telemetry
+    snapshots = _recent_telemetry_qs_for_device(device)
 
     keys = device.api_keys.order_by("-created_at")
 
@@ -513,11 +509,20 @@ def logout_user(request):
 
 
 def recent_telemetry(request):
+    """
+    JSON endpoint: recent telemetry for a device, capped to latest 50 samples.
+    Used by the 'Recent telemetry' table or other lightweight widgets.
+
+    Query params:
+      - device_id: optional serial. If omitted, uses the latest device that has data.
+      - limit: optional int <= RECENT_TELEMETRY_LIMIT (defaults to RECENT_TELEMETRY_LIMIT).
+    """
     try:
-        limit = int(request.GET.get("limit", "50"))
+        requested_limit = int(request.GET.get("limit", RECENT_TELEMETRY_LIMIT))
     except ValueError:
-        limit = 50
-    limit = max(1, min(limit, 500))
+        requested_limit = RECENT_TELEMETRY_LIMIT
+
+    limit = max(1, min(requested_limit, RECENT_TELEMETRY_LIMIT))
 
     device_id = request.GET.get("device_id")
 
@@ -550,14 +555,11 @@ def recent_telemetry(request):
                 "hysteresis_c": s.hysteresis_c,
                 "output": s.output,
                 "humidity_percent": s.humidity_percent,
-
                 # what the ESP32 actually sent, with its timezone offset
                 "device_ts": device_ts_local
                 or (device_ts_utc.isoformat() if device_ts_utc else None),
-
                 # keep UTC around for dashboards / SQL
                 "device_ts_utc": device_ts_utc.isoformat() if device_ts_utc else None,
-
                 "server_ts": s.server_ts.isoformat() if s.server_ts else None,
             }
         )
@@ -809,6 +811,12 @@ def telemetry_export_csv(request):
 
     # Base queryset: all telemetry for this device
     qs = TelemetrySnapshot.objects.filter(device_id=device.serial_number)
+
+
+
+   
+
+
 
     # Helper to parse datetime-local values from the browser
     def _parse_picker(value):
@@ -1204,6 +1212,21 @@ def about(request):
 
 
 #Helper Functions--------------:
+
+# How many samples to show in "Recent telemetry" views by default
+RECENT_TELEMETRY_LIMIT = 20
+def _recent_telemetry_qs_for_device(device, limit: int = RECENT_TELEMETRY_LIMIT):
+    """
+    Return a queryset of the most recent telemetry snapshots for a device,
+    capped to the given limit (newest first).
+    """
+    limit = max(1, int(limit))
+    qs = (
+        TelemetrySnapshot.objects
+        .filter(device_id=device.serial_number)
+        .order_by("-server_ts")
+    )
+    return qs[:limit]
 
 def api_login_required(view_func):
     @wraps(view_func)
