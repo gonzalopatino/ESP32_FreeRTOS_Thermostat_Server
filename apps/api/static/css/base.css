@@ -1,0 +1,15 @@
+body {
+    background-color: #f4f4f6;
+  }
+
+  main.container {
+    max-width: 1100px;
+  }
+
+.navbar-brand img {
+    height: 60px;
+    width: auto;
+    filter: brightness(3);
+    border-radius: 12px;   /* rounds the corners */
+}
+
