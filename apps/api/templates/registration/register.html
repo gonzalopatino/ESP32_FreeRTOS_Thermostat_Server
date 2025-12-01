@@ -1,27 +1,67 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Register</title>
-</head>
-<body>
-    <h1>Create account</h1>
+{% extends "base.html" %}
+{% block navbar %}{% endblock %}
+{% block title %}Create Account{% endblock %}
 
-    {% if form.errors %}
-        <p style="color: red;">
-            Please fix the errors below.
-        </p>
-    {% endif %}
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-4">
 
-    <form method="post">
+      <h1 class="h4 mb-4 text-center fw-bold">Create Account</h1>
+
+      <form method="post" novalidate>
         {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Register</button>
-    </form>
 
-    <p>
+        {# Username #}
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Username</label>
+          {{ form.username }}
+          <small class="text-muted">{{ form.username.help_text }}</small>
+          {% if form.username.errors %}
+            <div class="text-danger small">{{ form.username.errors }}</div>
+          {% endif %}
+        </div>
+
+        {# Password #}
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Password</label>
+          {{ form.password1 }}
+          <small class="text-muted d-block">
+            Your password must contain at least 8 characters.
+          </small>
+          {% if form.password1.errors %}
+            <div class="text-danger small">{{ form.password1.errors }}</div>
+          {% endif %}
+        </div>
+
+        {# Confirm Password #}
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Confirm Password</label>
+          {{ form.password2 }}
+          {% if form.password2.errors %}
+            <div class="text-danger small">{{ form.password2.errors }}</div>
+          {% endif %}
+        </div>
+
+        <button class="btn btn-primary w-100 py-2">Register</button>
+      </form>
+
+      <p class="mt-3 text-center text-muted">
         Already have an account?
-        <a href="{% url 'login' %}">Go to login</a>.
-    </p>
-</body>
-</html>
+        <a href="{% url 'login' %}">Login here</a>.
+      </p>
+
+    </div>
+  </div>
+</div>
+
+{# Automatically force Bootstrap styling on all inputs #}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("input").forEach(i => {
+    i.classList.add("form-control");
+  });
+});
+</script>
+
+{% endblock %}

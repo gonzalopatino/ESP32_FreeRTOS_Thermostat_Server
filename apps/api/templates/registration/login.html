@@ -1,32 +1,53 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Login</title>
-</head>
-<body>
-    <h1>Login</h1>
+{% extends "base.html" %}
+{% block navbar %}{% endblock %}
+{% block title %}Login{% endblock %}
 
-    {% if form.errors %}
-        <p style="color: red;">Invalid username or password. Try again.</p>
-    {% endif %}
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-4">
 
-    <form method="post">
+      <h1 class="h4 mb-4 text-center fw-bold">Login</h1>
+
+      {% if form.errors %}
+        <div class="alert alert-danger text-center py-2">
+          Invalid username or password.
+        </div>
+      {% endif %}
+
+      <form method="post" novalidate>
         {% csrf_token %}
-        <div>
-            <label for="{{ form.username.id_for_label }}">Username:</label>
-            {{ form.username }}
-        </div>
-        <div>
-            <label for="{{ form.password.id_for_label }}">Password:</label>
-            {{ form.password }}
-        </div>
-        <button type="submit">Login</button>
-    </form>
 
-    <p>
+        {# Username #}
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Username</label>
+          {{ form.username }}
+        </div>
+
+        {# Password #}
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Password</label>
+          {{ form.password }}
+        </div>
+
+        <button class="btn btn-primary w-100 py-2">Login</button>
+      </form>
+
+      <p class="mt-3 text-center text-muted">
         Do not have an account?
         <a href="{% url 'register' %}">Register here</a>.
-    </p>
-</body>
-</html>
+      </p>
+
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("input").forEach(i => {
+    i.classList.add("form-control");
+  });
+});
+</script>
+
+{% endblock %}

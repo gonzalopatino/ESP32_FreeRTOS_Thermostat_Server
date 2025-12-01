@@ -2,6 +2,10 @@ import json
 from functools import wraps
 from datetime import timedelta
 
+from django.contrib.auth.views import LoginView
+from django.contrib.auth.forms import AuthenticationForm
+
+
 from django.contrib.auth import authenticate, login, logout, get_user_model
 
 from django.http import JsonResponse, HttpResponseBadRequest
@@ -21,47 +25,6 @@ from django.utils import timezone
 from django.db.models import Q, Count
 import os
 from dotenv import load_dotenv
-
-
-from .models import TelemetrySnapshot, Device, DeviceApiKey
-
-
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
-from django.shortcuts import render
-
-from django.shortcuts import render, get_object_or_404
-from .models import Device, TelemetrySnapshot
-from django.shortcuts import render, redirect, get_object_or_404
-
-
-def register_page(request):
-    """
-    Simple HTML registration view using Django's UserCreationForm.
-    After successful registration, redirect to login page.
-    """
-    if request.method == "POST":
-        form = UserCreationForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect("login")  # name of the login URL
-    else:
-        form = UserCreationForm()
-
-    return render(request, "registration/register.html", {"form": form})
-
-@login_required
-def logout_view(request):
-    """
-    HTML logout for dashboard users.
-
-    Logs out the current user and redirects to the login page.
-    """
-    logout(request)
-    # assumes your login URL is named "login"
-    return redirect("login")
-
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import render, redirect
@@ -104,6 +67,47 @@ from django.shortcuts import render
 
 from django.shortcuts import render, get_object_or_404
 from .models import Device, TelemetrySnapshot
+
+from .models import TelemetrySnapshot, Device, DeviceApiKey
+
+
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import UserCreationForm
+from django.shortcuts import render
+
+from django.shortcuts import render, get_object_or_404
+from .models import Device, TelemetrySnapshot
+from django.shortcuts import render, redirect, get_object_or_404
+
+
+def register_page(request):
+    """
+    Simple HTML registration view using Django's UserCreationForm.
+    After successful registration, redirect to login page.
+    """
+    if request.method == "POST":
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("login")  # name of the login URL
+    else:
+        form = UserCreationForm()
+
+    return render(request, "registration/register.html", {"form": form})
+
+@login_required
+def logout_view(request):
+    """
+    HTML logout for dashboard users.
+
+    Logs out the current user and redirects to the login page.
+    """
+    logout(request)
+    # assumes your login URL is named "login"
+    return redirect("login")
+
+
 
 def register_page(request):
     """
