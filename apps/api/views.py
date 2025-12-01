@@ -666,107 +666,7 @@ def _parse_bool(value: str) -> bool:
     return value.lower() in ("1", "true", "yes", "y", "on")
 
 
-def telemetry_query(request):
-    if request.method != "GET":
-        return HttpResponseBadRequest("Only GET is allowed")
 
-    qs = TelemetrySnapshot.objects.all()
-
-    # Filter by device
-    device_id = request.GET.get("device_id")
-    if device_id:
-        qs = qs.filter(device_id=device_id)
-
-    # Time filters: start / end / range
-    start_param = request.GET.get("start")
-    end_param = request.GET.get("end")
-    range_param = request.GET.get("range")
-
-    def _parse_local(dt_str):
-        """
-        Parse a datetime-local string from the browser and make it timezone-aware
-        in the current Django timezone.
-        """
-        dt = parse_datetime(dt_str)
-        if not dt:
-            return None
-        if timezone.is_naive(dt):
-            dt = timezone.make_aware(dt, timezone.get_current_timezone())
-        return dt
-
-    # Explicit start / end coming from the datepicker
-    if start_param:
-        start_dt = _parse_local(start_param)
-        if not start_dt:
-            return HttpResponseBadRequest("Invalid 'start' datetime")
-        qs = qs.filter(server_ts__gte=start_dt)
-
-    if end_param:
-        end_dt = _parse_local(end_param)
-        if not end_dt:
-            return HttpResponseBadRequest("Invalid 'end' datetime")
-        qs = qs.filter(server_ts__lte=end_dt)
-
-    # Only apply 'range' if explicit start/end not given
-    if range_param and not (start_param or end_param):
-        try:
-            if range_param.endswith("h"):
-                hours = float(range_param[:-1])
-                window_start = timezone.now() - timedelta(hours=hours)
-            elif range_param.endswith("d"):
-                days = float(range_param[:-1])
-                window_start = timezone.now() - timedelta(days=days)
-            else:
-                return HttpResponseBadRequest(
-                    "Invalid 'range' format, use like '24h' or '7d'"
-                )
-        except ValueError:
-            return HttpResponseBadRequest(
-                "Invalid 'range' format, use like '24h' or '7d'"
-            )
-        qs = qs.filter(server_ts__gte=window_start)
-
-    # Latest vs history
-    latest_flag = _parse_bool(request.GET.get("latest"))
-    if latest_flag:
-        # realtime card: newest snapshot only
-        qs = qs.order_by("-server_ts")[:1]
-    else:
-        # history / chart: oldest → newest
-        limit_param = request.GET.get("limit")
-        try:
-            limit = int(limit_param) if limit_param else 100
-        except ValueError:
-            return HttpResponseBadRequest("Invalid 'limit', must be an integer")
-        limit = max(1, min(limit, 1000))
-        qs = qs.order_by("server_ts")[:limit]
-
-    # Serialize snapshots
-    results = []
-    for s in qs:
-        results.append(
-            {
-                "id": s.id,
-                "device_id": s.device_id,
-                "mode": s.mode,
-                "temp_inside_c": s.temp_inside_c,
-                "temp_outside_c": s.temp_outside_c,
-                "setpoint_c": s.setpoint_c,
-                "hysteresis_c": s.hysteresis_c,
-                "humidity_percent": getattr(s, "humidity_percent", None),
-                "output": getattr(s, "output", None),
-                "device_ts": s.device_ts.isoformat() if s.device_ts else None,
-                "server_ts": s.server_ts.isoformat() if s.server_ts else None,
-                "raw_payload": s.raw_payload,
-            }
-        )
-
-    return JsonResponse(
-        {
-            "count": len(results),
-            "results": results,
-        }
-    )
 
     
 
@@ -1626,6 +1526,9 @@ def telemetry_query(request):
     end_param = request.GET.get("end")
     range_param = request.GET.get("range")
 
+    explicit_range = bool(start_param or end_param)
+
+    # Explicit start / end from datepicker
     if start_param:
         start_dt = _parse_local(start_param)
         if not start_dt:
@@ -1638,15 +1541,15 @@ def telemetry_query(request):
             return HttpResponseBadRequest("Invalid 'end' datetime")
         qs = qs.filter(server_ts__lte=end_dt)
 
-    # Only apply 'range' if explicit start/end not given
-    if range_param and not (start_param or end_param):
+    # Only apply "range" when there is NO explicit start/end
+    if range_param and not explicit_range:
         try:
             if range_param.endswith("h"):
                 hours = float(range_param[:-1])
-                window_start = now() - timedelta(hours=hours)
+                window_start = timezone.now() - timedelta(hours=hours)
             elif range_param.endswith("d"):
                 days = float(range_param[:-1])
-                window_start = now() - timedelta(days=days)
+                window_start = timezone.now() - timedelta(days=days)
             else:
                 return HttpResponseBadRequest(
                     "Invalid 'range' format, use like '24h' or '7d'"
@@ -1657,20 +1560,27 @@ def telemetry_query(request):
             )
         qs = qs.filter(server_ts__gte=window_start)
 
-    # Latest vs limit
     latest_flag = _parse_bool(request.GET.get("latest"))
+
     if latest_flag:
+        # realtime card: newest snapshot only
         qs = qs.order_by("-server_ts")[:1]
     else:
-        limit_param = request.GET.get("limit")
-        try:
-            limit = int(limit_param) if limit_param else 100
-        except ValueError:
-            return HttpResponseBadRequest("Invalid 'limit', must be an integer")
-        limit = max(1, min(limit, 1000))
-        qs = qs.order_by("-server_ts")[:limit]
+        # history / chart
+        if explicit_range:
+            # User picked real dates, give them the full window
+            qs = qs.order_by("server_ts")[:100000]  # safety cap
+        else:
+            # Default case, no explicit range: still use a limit
+            limit_param = request.GET.get("limit")
+            try:
+                limit = int(limit_param) if limit_param else 100
+            except ValueError:
+                return HttpResponseBadRequest("Invalid 'limit', must be an integer")
+            limit = max(1, min(limit, 1000))
+            qs = qs.order_by("server_ts")[:limit]
 
-    # Serialize snapshots
+    # Serialize
     results = []
     for s in qs:
         results.append(
