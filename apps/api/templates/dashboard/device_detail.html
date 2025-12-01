@@ -246,24 +246,22 @@
                 {% for s in snapshots %}
                   <tr>
                     {# Server time: Keep as raw UTC, no JS conversion #}
-                    <td
-                        class="js-localtime"
-                        {% if s.server_ts %}
-                            data-iso="{{ s.server_ts|date:'c' }}"
-                        {% endif %}
-                        >
+                    <td>
                         {% if s.server_ts %}
                             {{ s.server_ts|date:"Y-m-d H:i:s" }} UTC
                         {% else %}
                             &ndash;
                         {% endif %}
                     </td>
+
+                    {# Device time: convert to browser-local with JS #}
                     <td
                         class="js-localtime"
                         {% if s.device_ts %}
                             data-iso="{{ s.device_ts|date:'c' }}"
                         {% endif %}
                         >
+                        
                         {% if s.device_ts %}
                             {{ s.device_ts|date:"Y-m-d H:i:s" }} UTC
                         {% else %}
