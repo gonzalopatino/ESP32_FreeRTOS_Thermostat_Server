@@ -245,7 +245,7 @@
               <tbody>
                 {% for s in snapshots %}
                   <tr>
-
+                    {# Server time: Keep as raw UTC, no JS conversion #}
                     <td
                         class="js-localtime"
                         {% if s.server_ts %}
