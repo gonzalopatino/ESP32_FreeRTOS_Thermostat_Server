@@ -328,7 +328,7 @@ async function loadRealtimeChart() {
         const d = new Date(ts);
         const tsText = Number.isNaN(d.getTime())
           ? ts
-          : d.toLocaleString() + " UTC";
+          : d.toLocaleString(); //Broswer localtime
         rtTs.textContent = "Last update: " + tsText;
       } else {
         rtTs.textContent = "Last update: --";
@@ -342,10 +342,44 @@ async function loadRealtimeChart() {
     if (rtOut) rtOut.textContent = s.output ?? "--";
   }
 
+  // ---------- NEW: localize table timestamps to browser timezone ----------
+
+  function formatLocalDateTime(d) {
+    if (!(d instanceof Date) || Number.isNaN(d.getTime())) {
+      return "";
+    }
+    return d.toLocaleString(undefined, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  function localizeTableTimes() {
+    const cells = document.querySelectorAll(".js-localtime");
+    cells.forEach((cell) => {
+      const iso = cell.dataset.iso;
+      if (!iso) {
+        return;
+      }
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) {
+        return; // leave whatever was rendered
+      }
+      cell.textContent = formatLocalDateTime(d);
+    });
+  }
+
+  // -----------------------------------------------------------------------
+
   // Initial loads
+  console.log("Device detail script: running initial loads");
   loadTelemetry(true);
   loadRealtime();
   loadRealtimeChart();    // new realtime chart
+  localizeTableTimes(); // convert table times to broswer-local
 
   // Realtime poll every 5 seconds
   setInterval(loadRealtime, 15000);
