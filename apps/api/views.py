@@ -862,11 +862,13 @@ def telemetry_export_csv(request):
 
     writer = csv.writer(response)
 
-    # Header row
+    # Header ro
     writer.writerow(
         [
-            "server_ts",
-            "device_ts",
+            "server_ts_utc",
+            "server_ts_local",
+            "device_ts_utc",
+            "device_ts_local",
             "temp_inside_c",
             "temp_outside_c",
             "setpoint_c",
@@ -877,12 +879,35 @@ def telemetry_export_csv(request):
         ]
     )
 
+
     # Data rows
     for s in qs:
+        # Server timestamp: UTC and localized
+        if s.server_ts:
+            server_ts_utc = s.server_ts.isoformat()
+            server_ts_local = timezone.localtime(
+            s.server_ts
+            ).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            server_ts_utc = ""
+            server_ts_local = ""
+
+        # Device timestamp: UTC and localized
+        if s.device_ts:
+            device_ts_utc = s.device_ts.isoformat()
+            device_ts_local = timezone.localtime(
+            s.device_ts
+            ).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            device_ts_utc = ""
+            device_ts_local = ""
+
         writer.writerow(
             [
-                s.server_ts.isoformat() if s.server_ts else "",
-                s.device_ts.isoformat() if s.device_ts else "",
+                server_ts_utc,
+                server_ts_local,
+                device_ts_utc,
+                device_ts_local,
                 s.temp_inside_c,
                 s.temp_outside_c,
                 s.setpoint_c,
@@ -892,7 +917,6 @@ def telemetry_export_csv(request):
                 getattr(s, "output", None),
             ]
         )
-
     return response
 
 
