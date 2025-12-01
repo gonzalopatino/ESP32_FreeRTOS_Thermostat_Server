@@ -31,6 +31,31 @@ ALLOWED_HOSTS = [h.strip() for h in raw_hosts.split(",") if h.strip()]
 
 
 
+
+
+# Session security settings
+
+# 1) Session lifetime in seconds.
+#    Example: 30 minutes = 30 * 60 = 1800
+SESSION_COOKIE_AGE = 1800  # 30 minutes of inactivity
+
+# 2) If True, the session cookie is deleted when the browser is closed.
+#    If you want "stay logged in" to survive browser restarts, keep this False.
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
+# 3) If True, each request refreshes the session expiry.
+#    This gives you an idle timeout:
+#    - Active users stay logged in,
+#    - Users who go idle longer than SESSION_COOKIE_AGE are logged out.
+SESSION_SAVE_EVERY_REQUEST = True
+
+
+
+
+
+
+
+
 # Application definition
 
 INSTALLED_APPS = [

@@ -1,84 +1,41 @@
+"""
+Views for the API and dashboard pages.
+Organized imports for clarity and maintenance.
+"""
+
+# Standard library imports
+import csv
 import json
-from functools import wraps
+import logging
+import os
 from datetime import timedelta
+from functools import wraps
+from zoneinfo import ZoneInfo
 
+# Third-party imports
+from dotenv import load_dotenv
+
+# Django auth imports
+from django.contrib import messages
+from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.views import LoginView
-from django.contrib.auth.forms import AuthenticationForm
 
-
-from django.contrib.auth import authenticate, login, logout, get_user_model
-
-from django.http import JsonResponse, HttpResponseBadRequest
+# Django core framework imports
+from django.db.models import Count, Q
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from django.utils.timezone import now
-from django.shortcuts import get_object_or_404
-import logging
-import csv
-from django.http import HttpResponse
-from zoneinfo import ZoneInfo
 
-from django.utils.dateparse import parse_datetime
-from django.utils import timezone
-
-from django.db.models import Q, Count
-import os
-from dotenv import load_dotenv
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.shortcuts import render, redirect
-
-from .models import Device, DeviceApiKey
-from django.shortcuts import render, get_object_or_404, redirect
+# Local application imports
 from .models import Device, DeviceApiKey, TelemetrySnapshot
 
 
-import json
-from functools import wraps
-from datetime import timedelta
-
-from django.contrib.auth import authenticate, login, logout, get_user_model
-
-from django.http import JsonResponse, HttpResponseBadRequest
-from django.utils.timezone import now
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
-from django.utils.timezone import now
-from django.shortcuts import get_object_or_404
-import logging
-
-
-from django.utils.dateparse import parse_datetime
-
-
-from django.db.models import Q, Count
-import os
-from dotenv import load_dotenv
-
-
-from .models import TelemetrySnapshot, Device, DeviceApiKey
-
-
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
-from django.shortcuts import render
-
-from django.shortcuts import render, get_object_or_404
-from .models import Device, TelemetrySnapshot
-
-from .models import TelemetrySnapshot, Device, DeviceApiKey
-
-
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
-from django.shortcuts import render
-
-from django.shortcuts import render, get_object_or_404
-from .models import Device, TelemetrySnapshot
-from django.shortcuts import render, redirect, get_object_or_404
 
 
 def register_page(request):
@@ -123,6 +80,8 @@ def register_page(request):
         form = UserCreationForm()
 
     return render(request, "registration/register.html", {"form": form})
+
+
 
 @login_required
 def logout_view(request):
@@ -512,7 +471,7 @@ def logout_user(request):
     logout(request)
     return JsonResponse({"status": "ok"})
 
-
+@login_required
 def recent_telemetry(request):
     """
     JSON endpoint: recent telemetry for a device, capped to latest 50 samples.
@@ -1513,7 +1472,7 @@ def _parse_local(dt_str):
         dt = timezone.make_aware(dt, timezone.get_current_timezone())
     return dt
 
-
+@login_required
 def telemetry_query(request):
     if request.method != "GET":
         return HttpResponseBadRequest("Only GET is allowed")
