@@ -628,15 +628,21 @@ def logout_user(request):
 # Telemetry JSON endpoints
 # ---------------------------------------------------------------------------
 
+
 @login_required
 def recent_telemetry(request):
     """
     JSON endpoint: recent telemetry for a device, capped to latest N samples.
     Used by the 'Recent telemetry' table or other lightweight widgets.
 
+    Security:
+      - Only returns telemetry for devices owned by the logged-in user.
+
     Query params:
-      - device_id: optional serial. If omitted, uses the latest device that has data.
-      - limit: optional int <= RECENT_TELEMETRY_LIMIT (defaults to RECENT_TELEMETRY_LIMIT).
+      - device_id: optional serial. If omitted, uses the latest device
+        that belongs to this user and that has data.
+      - limit: optional int <= RECENT_TELEMETRY_LIMIT
+        (defaults to RECENT_TELEMETRY_LIMIT).
     """
     try:
         requested_limit = int(request.GET.get("limit", RECENT_TELEMETRY_LIMIT))
@@ -645,18 +651,41 @@ def recent_telemetry(request):
 
     limit = max(1, min(requested_limit, RECENT_TELEMETRY_LIMIT))
 
-    device_id = request.GET.get("device_id")
+    device_serial = request.GET.get("device_id", None)
 
-    qs = TelemetrySnapshot.objects.all().order_by("-server_ts")
+    # All device serials owned by this user
+    user_device_serials = Device.objects.filter(owner=request.user).values_list(
+        "serial_number", flat=True
+    )
 
-    if device_id is not None:
-        # Explicit device filter when provided
-        qs = qs.filter(device_id=device_id)
+    # Base queryset: telemetry, newest first, for user-owned devices only
+    base_qs = TelemetrySnapshot.objects.filter(
+        device_id__in=user_device_serials
+    ).order_by("-server_ts")
+
+    if device_serial:
+        # Make sure this device exists and is owned by this user
+        device = Device.objects.filter(
+            serial_number=device_serial,
+            owner=request.user,
+        ).first()
+        if device is None:
+            # Either not found or not owned
+            return JsonResponse(
+                {"detail": "Device not found or not owned"}, status=404
+            )
+        qs = base_qs.filter(device_id=device.serial_number)
+        resolved_serial = device.serial_number
     else:
-        # Default to most recent device_id if none provided
-        if qs.exists():
-            device_id = qs.first().device_id
-            qs = qs.filter(device_id=device_id)
+        # No device specified: use the latest device that has data and is owned by this user
+        first_snapshot = base_qs.first()
+        if not first_snapshot:
+            # No telemetry at all for this user
+            return JsonResponse(
+                {"count": 0, "device_id": None, "data": []}
+            )
+        resolved_serial = first_snapshot.device_id
+        qs = base_qs.filter(device_id=resolved_serial)
 
     qs = qs[:limit]
 
@@ -688,7 +717,7 @@ def recent_telemetry(request):
     return JsonResponse(
         {
             "count": len(data),
-            "device_id": device_id,
+            "device_id": resolved_serial,
             "data": data,
         }
     )
@@ -783,16 +812,30 @@ def telemetry_query(request):
     """
     Flexible telemetry query endpoint for charts and history views.
     Supports device, start/end, range, and latest flags.
+
+    Security:
+      - Only returns telemetry for devices owned by the logged-in user.
     """
     if request.method != "GET":
         return HttpResponseBadRequest("Only GET is allowed")
 
-    qs = TelemetrySnapshot.objects.all()
+    # Restrict to telemetry for devices owned by this user
+    user_device_serials = Device.objects.filter(owner=request.user).values_list(
+        "serial_number", flat=True
+    )
+    qs = TelemetrySnapshot.objects.filter(device_id__in=user_device_serials)
 
     # Filter by device
     device_id = request.GET.get("device_id")
     if device_id:
-        qs = qs.filter(device_id=device_id)
+        # Ensure the device exists and is owned by this user
+        device = Device.objects.filter(
+            serial_number=device_id,
+            owner=request.user,
+        ).first()
+        if device is None:
+            return HttpResponseBadRequest("Device not found or not owned")
+        qs = qs.filter(device_id=device.serial_number)
 
     # Time filters: start / end / range
     start_param = request.GET.get("start")
@@ -841,7 +884,7 @@ def telemetry_query(request):
     else:
         # history / chart
         if explicit_range:
-            # User picked real dates, give them the full window
+            # User picked real dates, give them the full window (capped)
             qs = qs.order_by("server_ts")[:10000]  # safety cap
         else:
             # Default case, no explicit range: still use a limit
