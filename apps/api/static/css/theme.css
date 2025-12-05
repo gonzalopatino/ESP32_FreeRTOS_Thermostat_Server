@@ -620,13 +620,80 @@ a:hover {
 }
 
 /* --------------------------------------------------------------------------
-   Chart Container Styling
+   Chart Card & Container Styling - Modern Dashboard Look
    -------------------------------------------------------------------------- */
+.chart-card {
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.chart-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .chart-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .chart-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .chart-container {
-  background: var(--tp-card-bg);
+  background: transparent;
   border-radius: var(--tp-radius-lg);
-  padding: 1.5rem;
-  border: 1px solid var(--tp-border);
+  padding: 0.5rem 0;
+}
+
+.chart-container canvas {
+  border-radius: var(--tp-radius);
+}
+
+/* Chart loading state */
+.chart-container.loading {
+  position: relative;
+}
+
+.chart-container.loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(var(--tp-primary-rgb), 0.1) 50%, 
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: chart-shimmer 1.5s infinite;
+  border-radius: var(--tp-radius-lg);
+  pointer-events: none;
+}
+
+@keyframes chart-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Badge styling for chart headers */
+.bg-success-subtle {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+.text-success {
+  color: rgb(16, 185, 129) !important;
+}
+
+.bg-secondary-subtle {
+  background-color: var(--tp-bg-tertiary) !important;
+}
+
+[data-theme="dark"] .bg-success-subtle {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+[data-theme="dark"] .bg-secondary-subtle {
+  background-color: rgba(148, 163, 184, 0.15) !important;
 }
 
 /* --------------------------------------------------------------------------

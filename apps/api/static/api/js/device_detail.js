@@ -1,4 +1,5 @@
 // static/api/js/device_detail.js
+// Modern Chart.js implementation with industry-standard features
 
 document.addEventListener("DOMContentLoaded", function () {
   const root = document.getElementById("device-detail-root");
@@ -12,7 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const applyBtn = document.getElementById("applyRangeBtn");
 
   const tempCtx = document.getElementById("tempChart");
-  const rtTempCtx = document.getElementById("rtTempChart"); // new realtime chart vanvas
+  const rtTempCtx = document.getElementById("rtTempChart");
 
   // Realtime card elements
   const rtCard = document.getElementById("realtime-card");
@@ -24,177 +25,432 @@ document.addEventListener("DOMContentLoaded", function () {
   const rtOut = document.getElementById("rt-out");
 
   let tempChart = null;
-  let rtTempChart = null; //new: realtime chart instance
+  let rtTempChart = null;
 
-  // Get theme-aware colors for charts
+  // =========================================================================
+  // MODERN COLOR PALETTE
+  // =========================================================================
+  const chartPalette = {
+    inside: {
+      line: 'rgb(59, 130, 246)',      // Blue
+      fill: 'rgba(59, 130, 246, 0.12)',
+      point: 'rgb(59, 130, 246)',
+    },
+    outside: {
+      line: 'rgb(16, 185, 129)',      // Emerald/Green  
+      fill: 'rgba(16, 185, 129, 0.08)',
+      point: 'rgb(16, 185, 129)',
+    },
+    setpoint: {
+      line: 'rgb(249, 115, 22)',      // Orange
+      fill: 'rgba(249, 115, 22, 0.05)',
+      point: 'rgb(249, 115, 22)',
+    }
+  };
+
+  // =========================================================================
+  // THEME-AWARE COLORS
+  // =========================================================================
   function getChartColors() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     return {
-      text: isDark ? '#f1f5f9' : '#0f172a',
-      grid: isDark ? 'rgba(148, 163, 184, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-      muted: isDark ? '#94a3b8' : '#64748b'
+      text: isDark ? '#e2e8f0' : '#1e293b',
+      textMuted: isDark ? '#94a3b8' : '#64748b',
+      grid: isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(15, 23, 42, 0.06)',
+      border: isDark ? 'rgba(148, 163, 184, 0.2)' : 'rgba(15, 23, 42, 0.1)',
+      tooltipBg: isDark ? 'rgba(30, 41, 59, 0.96)' : 'rgba(255, 255, 255, 0.96)',
+      tooltipBorder: isDark ? 'rgba(71, 85, 105, 0.5)' : 'rgba(203, 213, 225, 0.8)',
+      crosshair: isDark ? 'rgba(148, 163, 184, 0.4)' : 'rgba(100, 116, 139, 0.3)',
     };
   }
 
-  // Update chart colors when theme changes
-  function updateChartColors(chart) {
-    if (!chart) return;
+  // =========================================================================
+  // CUSTOM CROSSHAIR PLUGIN
+  // =========================================================================
+  const crosshairPlugin = {
+    id: 'crosshair',
+    afterDraw: (chart) => {
+      if (chart.tooltip._active && chart.tooltip._active.length) {
+        const activePoint = chart.tooltip._active[0];
+        const ctx = chart.ctx;
+        const x = activePoint.element.x;
+        const topY = chart.scales.y.top;
+        const bottomY = chart.scales.y.bottom;
+        const colors = getChartColors();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x, topY);
+        ctx.lineTo(x, bottomY);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = colors.crosshair;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  };
+
+  // Register the crosshair plugin
+  Chart.register(crosshairPlugin);
+
+  // =========================================================================
+  // TOOLTIP CONFIGURATION
+  // =========================================================================
+  function createTooltipConfig() {
     const colors = getChartColors();
     
-    // Update scales
-    if (chart.options.scales.x) {
-      chart.options.scales.x.ticks.color = colors.text;
-      chart.options.scales.x.grid.color = colors.grid;
-    }
-    if (chart.options.scales.y) {
-      chart.options.scales.y.ticks.color = colors.text;
-      chart.options.scales.y.grid.color = colors.grid;
-    }
-    
-    // Update legend
-    if (chart.options.plugins.legend) {
-      chart.options.plugins.legend.labels = chart.options.plugins.legend.labels || {};
-      chart.options.plugins.legend.labels.color = colors.text;
-    }
-    
-    chart.update('none'); // Update without animation
+    return {
+      enabled: true,
+      mode: 'index',
+      intersect: false,
+      backgroundColor: colors.tooltipBg,
+      titleColor: colors.text,
+      bodyColor: colors.text,
+      borderColor: colors.tooltipBorder,
+      borderWidth: 1,
+      cornerRadius: 10,
+      padding: 14,
+      displayColors: true,
+      titleFont: {
+        size: 13,
+        weight: '600',
+        family: "'Inter', 'Segoe UI', system-ui, sans-serif"
+      },
+      bodyFont: {
+        size: 12,
+        family: "'Inter', 'Segoe UI', system-ui, sans-serif"
+      },
+      bodySpacing: 8,
+      boxPadding: 6,
+      usePointStyle: true,
+      callbacks: {
+        title: function(tooltipItems) {
+          if (!tooltipItems.length) return '';
+          const label = tooltipItems[0].label;
+          const date = new Date(label);
+          if (isNaN(date.getTime())) return label;
+          return date.toLocaleString(undefined, {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+        },
+        label: function(context) {
+          const label = context.dataset.label || '';
+          const value = context.parsed.y;
+          if (value === null || value === undefined) return null;
+          return ` ${label}: ${value.toFixed(1)}°C`;
+        },
+        labelPointStyle: function() {
+          return { pointStyle: 'circle', rotation: 0 };
+        }
+      }
+    };
   }
 
-  function createTempChart(ctx) {
+  // =========================================================================
+  // MODERN CHART FACTORY
+  // =========================================================================
+  function createTempChart(ctx, options = {}) {
     if (!ctx) return null;
+    
     const colors = getChartColors();
+    const isRealtime = options.realtime || false;
 
     return new Chart(ctx, {
-      type: "line",
+      type: 'line',
       data: {
         labels: [],
         datasets: [
           {
-            label: "Tin (°C)",
+            label: 'Inside Temp',
             data: [],
-            borderWidth: 2,
-            pointRadius: 2,
-            tension: 0.2,
+            borderColor: chartPalette.inside.line,
+            backgroundColor: chartPalette.inside.fill,
+            pointBackgroundColor: chartPalette.inside.point,
+            pointBorderColor: 'transparent',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: chartPalette.inside.line,
+            pointHoverBorderWidth: 3,
+            borderWidth: 2.5,
+            pointRadius: isRealtime ? 0 : 2,
+            pointHoverRadius: 6,
+            tension: 0.4,
+            fill: true,
+            order: 3,
           },
           {
-            label: "Tout (°C)",
+            label: 'Outside Temp',
             data: [],
-            borderWidth: 2,
-            pointRadius: 2,
-            tension: 0.2,
+            borderColor: chartPalette.outside.line,
+            backgroundColor: chartPalette.outside.fill,
+            pointBackgroundColor: chartPalette.outside.point,
+            pointBorderColor: 'transparent',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: chartPalette.outside.line,
+            pointHoverBorderWidth: 3,
+            borderWidth: 2.5,
+            pointRadius: isRealtime ? 0 : 2,
+            pointHoverRadius: 6,
+            tension: 0.4,
+            fill: true,
+            order: 2,
           },
           {
-            label: "SP (°C)",
+            label: 'Setpoint',
             data: [],
+            borderColor: chartPalette.setpoint.line,
+            backgroundColor: 'transparent',
+            pointBackgroundColor: chartPalette.setpoint.point,
+            pointBorderColor: 'transparent',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: chartPalette.setpoint.line,
+            pointHoverBorderWidth: 3,
             borderWidth: 2,
-            pointRadius: 2,
-            tension: 0.2,
+            borderDash: [8, 4],
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            tension: 0,
+            fill: false,
+            order: 1,
           },
         ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        
+        // Smooth animations
+        animation: {
+          duration: 800,
+          easing: 'easeOutQuart',
+        },
+        transitions: {
+          active: {
+            animation: {
+              duration: 200
+            }
+          }
+        },
+        
+        // Interaction settings
         interaction: {
-          mode: "index",
+          mode: 'index',
+          intersect: false,
+          axis: 'x',
+        },
+        
+        // Hover effects
+        hover: {
+          mode: 'index',
           intersect: false,
         },
+
+        // Layout padding
+        layout: {
+          padding: {
+            top: 8,
+            right: 16,
+            bottom: 4,
+            left: 8,
+          }
+        },
+
+        // Plugins configuration
         plugins: {
           legend: {
-            position: "top",
+            display: true,
+            position: 'top',
+            align: 'end',
             labels: {
-              color: colors.text
+              color: colors.text,
+              usePointStyle: true,
+              pointStyle: 'circle',
+              padding: 20,
+              font: {
+                size: 12,
+                weight: '500',
+                family: "'Inter', 'Segoe UI', system-ui, sans-serif"
+              },
+              boxWidth: 8,
+              boxHeight: 8,
             }
           },
+          tooltip: createTooltipConfig(),
         },
+
+        // Scales configuration
         scales: {
           x: {
-            ticks: {
-              autoSkip: true,
-              maxTicksLimit: 8,
-              color: colors.text
-            },
+            type: 'category',
+            display: true,
             grid: {
-              color: colors.grid
-            }
+              display: true,
+              color: colors.grid,
+              drawBorder: false,
+              lineWidth: 1,
+            },
+            border: {
+              display: false,
+            },
+            ticks: {
+              color: colors.textMuted,
+              font: {
+                size: 11,
+                family: "'Inter', 'Segoe UI', system-ui, sans-serif"
+              },
+              maxRotation: 45,
+              minRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: isRealtime ? 6 : 10,
+              padding: 8,
+              callback: function(value, index, ticks) {
+                const label = this.getLabelForValue(value);
+                if (!label) return '';
+                const date = new Date(label);
+                if (isNaN(date.getTime())) return label;
+                
+                if (isRealtime) {
+                  return date.toLocaleTimeString(undefined, {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  });
+                }
+                return date.toLocaleString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+              }
+            },
           },
           y: {
+            display: true,
             beginAtZero: false,
-            ticks: {
-              color: colors.text
-            },
             grid: {
-              color: colors.grid
+              display: true,
+              color: colors.grid,
+              drawBorder: false,
+              lineWidth: 1,
+            },
+            border: {
+              display: false,
+            },
+            ticks: {
+              color: colors.textMuted,
+              font: {
+                size: 11,
+                weight: '500',
+                family: "'Inter', 'Segoe UI', system-ui, sans-serif"
+              },
+              padding: 12,
+              callback: function(value) {
+                return value.toFixed(1) + '°';
+              }
+            },
+            title: {
+              display: true,
+              text: 'Temperature (°C)',
+              color: colors.textMuted,
+              font: {
+                size: 11,
+                weight: '500',
+                family: "'Inter', 'Segoe UI', system-ui, sans-serif"
+              },
+              padding: { bottom: 8 }
             }
           },
         },
-      },
+
+        // Element defaults
+        elements: {
+          line: {
+            capBezierPoints: true,
+          },
+          point: {
+            hitRadius: 10,
+          }
+        }
+      }
     });
   }
-  //History chart instance
-  tempChart = createTempChart(tempCtx);
 
-  //Realtime chart instance
-   if (rtTempCtx) {
-    rtTempChart = createTempChart(rtTempCtx);
+  // Create chart instances
+  tempChart = createTempChart(tempCtx, { realtime: false });
+  if (rtTempCtx) {
+    rtTempChart = createTempChart(rtTempCtx, { realtime: true });
   }
 
-  // Listen for theme changes and update charts
+  // =========================================================================
+  // THEME CHANGE HANDLER
+  // =========================================================================
+  function updateChartTheme(chart) {
+    if (!chart) return;
+    const colors = getChartColors();
+
+    // Update scales
+    chart.options.scales.x.ticks.color = colors.textMuted;
+    chart.options.scales.x.grid.color = colors.grid;
+    chart.options.scales.y.ticks.color = colors.textMuted;
+    chart.options.scales.y.grid.color = colors.grid;
+    chart.options.scales.y.title.color = colors.textMuted;
+
+    // Update legend
+    chart.options.plugins.legend.labels.color = colors.text;
+
+    // Update tooltip
+    chart.options.plugins.tooltip.backgroundColor = colors.tooltipBg;
+    chart.options.plugins.tooltip.titleColor = colors.text;
+    chart.options.plugins.tooltip.bodyColor = colors.text;
+    chart.options.plugins.tooltip.borderColor = colors.tooltipBorder;
+
+    chart.update('none');
+  }
+
+  // Listen for theme changes
   const themeToggle = document.getElementById('themeToggle');
   if (themeToggle) {
     themeToggle.addEventListener('click', function() {
-      // Small delay to let the theme change take effect
       setTimeout(() => {
-        updateChartColors(tempChart);
-        updateChartColors(rtTempChart);
+        updateChartTheme(tempChart);
+        updateChartTheme(rtTempChart);
       }, 50);
     });
   }
 
-  function formatServerTimeForChart(isoString) {
-  if (!isoString) return "";
-  const d = new Date(isoString);
-  if (Number.isNaN(d.getTime())) return isoString;
+  // Observe data-theme attribute changes
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.attributeName === 'data-theme') {
+        updateChartTheme(tempChart);
+        updateChartTheme(rtTempChart);
+      }
+    });
+  });
+  observer.observe(document.documentElement, { attributes: true });
 
-  const pad = (n) => (n < 10 ? "0" + n : "" + n);
+  // =========================================================================
+  // UTILITY FUNCTIONS
+  // =========================================================================
   
-  const yyyy = d.getFullYear();
-  const mm = pad(d.getMonth() + 1);
-  const dd = pad(d.getDate());
-  const hh = pad(d.getHours());
-  const mi = pad(d.getMinutes());
-  const ss = pad(d.getSeconds());
-
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
-}
-
-
-  function formatLabel(isoString) {
+  function formatServerTimeForChart(isoString) {
     if (!isoString) return "";
     const d = new Date(isoString);
-    if (Number.isNaN(d.getTime())) {
-      return isoString;
-    }
-    const pad = (n) => (n < 10 ? "0" + n : "" + n);
-    const mm = pad(d.getMonth() + 1);
-    const dd = pad(d.getDate());
-    const hh = pad(d.getHours());
-    const min = pad(d.getMinutes());
-    return `${mm}-${dd} ${hh}:${min}`;
+    if (Number.isNaN(d.getTime())) return isoString;
+    return d.toISOString();
   }
 
-    function toLocalIsoWithOffset(dtLocal) {
-    // dtLocal is a string from <input type="datetime-local">, e.g. "2025-11-29T20:10"
+  function toLocalIsoWithOffset(dtLocal) {
     if (!dtLocal) return "";
-
-    // This treats it as local time in the browser timezone
     const d = new Date(dtLocal);
-    if (Number.isNaN(d.getTime())) {
-        return "";
-    }
+    if (Number.isNaN(d.getTime())) return "";
 
     const pad = (n) => String(n).padStart(2, "0");
-
     const year = d.getFullYear();
     const month = pad(d.getMonth() + 1);
     const day = pad(d.getDate());
@@ -202,23 +458,18 @@ document.addEventListener("DOMContentLoaded", function () {
     const minutes = pad(d.getMinutes());
     const seconds = pad(d.getSeconds());
 
-    // getTimezoneOffset returns minutes *behind* UTC (e.g. 480 for UTC-8)
     const offsetMinutes = d.getTimezoneOffset() * -1;
     const sign = offsetMinutes >= 0 ? "+" : "-";
     const absMinutes = Math.abs(offsetMinutes);
     const offsetHours = pad(Math.floor(absMinutes / 60));
     const offsetMins = pad(absMinutes % 60);
 
-    // Example: "2025-11-29T20:10:00-08:00"
-    return (
-        `${year}-${month}-${day}` +
-        `T${hours}:${minutes}:${seconds}` +
-        `${sign}${offsetHours}:${offsetMins}`
-    );
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${sign}${offsetHours}:${offsetMins}`;
   }
-  
 
-
+  // =========================================================================
+  // DATA LOADING - HISTORY CHART
+  // =========================================================================
   async function loadTelemetry(useDefaultRange = false) {
     const params = new URLSearchParams();
     params.append("device_id", serial);
@@ -227,26 +478,21 @@ document.addEventListener("DOMContentLoaded", function () {
     const toVal = toInput.value;
 
     if (fromVal && toVal) {
-
-      // Convert browser datetime-local into ISO with timezone offset
       const startIso = toLocalIsoWithOffset(fromVal);
       const endIso = toLocalIsoWithOffset(toVal);
-      if(startIso && endIso) {
+      if (startIso && endIso) {
         params.append("start", startIso);
         params.append("end", endIso);
-        } 
-        
+      }
     } else if (useDefaultRange) {
       params.append("range", "24h");
-      }
+    }
 
-    const url =
-      params.toString().length > 0
-        ? `${telemetryUrl}?${params.toString()}`
-        : telemetryUrl;
+    const url = params.toString().length > 0
+      ? `${telemetryUrl}?${params.toString()}`
+      : telemetryUrl;
 
     let resp;
-
     try {
       resp = await fetch(url, {
         headers: { "X-Requested-With": "XMLHttpRequest" },
@@ -264,34 +510,24 @@ document.addEventListener("DOMContentLoaded", function () {
     const payload = await resp.json();
     const rows = payload.results || payload.data || [];
 
-   // Sort telemetry by timestamp: oldest → newest
+    // Sort oldest → newest
     const data = rows.slice().sort((a, b) => {
-      const ta = (a.server_ts || a.device_ts || "");
-      const tb = (b.server_ts || b.device_ts || "");
-      // ISO 8601 strings sort correctly lexicographically
+      const ta = a.server_ts || a.device_ts || "";
+      const tb = b.server_ts || b.device_ts || "";
       return ta.localeCompare(tb);
     });
-
-    console.log(
-      "Telemetry order (server_ts, sorted):",
-      data.map((s) => s.server_ts || s.device_ts)
-    );
-
 
     const labels = data.map((s) => formatServerTimeForChart(s.server_ts));
     const tin = data.map((s) => s.temp_inside_c);
     const tout = data.map((s) => s.temp_outside_c);
     const sp = data.map((s) => s.setpoint_c);
 
-
-    console.log("Chart labels:", labels);
-
     if (tempChart) {
       tempChart.data.labels = labels;
       tempChart.data.datasets[0].data = tin;
       tempChart.data.datasets[1].data = tout;
       tempChart.data.datasets[2].data = sp;
-      tempChart.update();
+      tempChart.update('default');
     }
 
     const countSpan = document.getElementById("samplesCount");
@@ -300,100 +536,81 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  // =========================================================================
+  // DATA LOADING - REALTIME CHART
+  // =========================================================================
+  async function loadRealtimeChart() {
+    if (!rtTempChart) return;
 
-    /**
-   * Load realtime chart data from /api/telemetry/recent/.
-   * - Filters to samples in the last 24 hours relative to browser time.
-   * - Updates rtTempChart if available.
-   */
-async function loadRealtimeChart() {
-  if (!rtTempChart) {
-    return;
-  }
+    const params = new URLSearchParams();
+    params.append("device_id", serial);
+    params.append("limit", "100");
 
-  const params = new URLSearchParams();
-  params.append("device_id", serial);
-  params.append("limit", "50"); // still cap to 50 newest at the backend
+    const url = `/api/telemetry/recent/?${params.toString()}`;
 
-  const url = `/api/telemetry/recent/?${params.toString()}`;
-
-  let resp;
-  try {
-    resp = await fetch(url, {
-      headers: {
-        "X-Requested-With": "XMLHttpRequest",
-      },
-    });
-  } catch (err) {
-    console.warn("Failed to fetch realtime chart data:", err);
-    return;
-  }
-
-  if (!resp.ok) {
-    console.warn(
-      "Realtime chart telemetry request failed with status",
-      resp.status
-    );
-    return;
-  }
-
-  const payload = await resp.json();
-
-  const rows =
-    (payload && (payload.results || payload.data)) ||
-    (Array.isArray(payload) ? payload : []);
-
-  if (!rows.length) {
-    // No data at all for this device
-    rtTempChart.data.labels = [];
-    rtTempChart.data.datasets.forEach((ds) => (ds.data = []));
-    rtTempChart.update();
-    return;
-  }
-
-  // Backend: newest first (order by -server_ts). Reverse to chronological.
-  const chronological = rows.slice().reverse();
-
-  // Compute cutoff for the last 24 hours relative to the browser time
-  const now = new Date();
-  const cutoffMs = now.getTime() - 24 * 60 * 60 * 1000;
-
-  // Keep only points from the last 24 hours
-  const data = chronological.filter((s) => {
-    const ts = s.server_ts ? new Date(s.server_ts) : null;
-    if (!ts || isNaN(ts.getTime())) {
-      return false;
-    }
-    return ts.getTime() >= cutoffMs;
-  });
-
-  // If nothing is within the last 24h, show an empty chart, not old data
-  if (!data.length) {
-    rtTempChart.data.labels = [];
-    rtTempChart.data.datasets.forEach((ds) => (ds.data = []));
-    rtTempChart.update();
-    return;
-  }
-
-  const labels = data.map((s) => formatServerTimeForChart(s.server_ts));
-  const tin = data.map((s) => s.temp_inside_c);
-  const tout = data.map((s) => s.temp_outside_c);
-  const sp = data.map((s) => s.setpoint_c);
-
-  rtTempChart.data.labels = labels;
-  rtTempChart.data.datasets[0].data = tin;
-  rtTempChart.data.datasets[1].data = tout;
-  rtTempChart.data.datasets[2].data = sp;
-  rtTempChart.update();
-}
-
-
-
-  // Realtime telemetry (latest sample every 5 seconds)
-  async function loadRealtime() {
-    if (!rtCard) {
+    let resp;
+    try {
+      resp = await fetch(url, {
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      });
+    } catch (err) {
+      console.warn("Failed to fetch realtime chart data:", err);
       return;
     }
+
+    if (!resp.ok) {
+      console.warn("Realtime chart request failed with status", resp.status);
+      return;
+    }
+
+    const payload = await resp.json();
+    const rows = (payload && (payload.results || payload.data)) || 
+                 (Array.isArray(payload) ? payload : []);
+
+    if (!rows.length) {
+      rtTempChart.data.labels = [];
+      rtTempChart.data.datasets.forEach((ds) => (ds.data = []));
+      rtTempChart.update('none');
+      return;
+    }
+
+    // Backend: newest first → reverse to chronological
+    const chronological = rows.slice().reverse();
+
+    // Filter to last 24 hours
+    const now = new Date();
+    const cutoffMs = now.getTime() - 24 * 60 * 60 * 1000;
+
+    const data = chronological.filter((s) => {
+      const ts = s.server_ts ? new Date(s.server_ts) : null;
+      if (!ts || isNaN(ts.getTime())) return false;
+      return ts.getTime() >= cutoffMs;
+    });
+
+    if (!data.length) {
+      rtTempChart.data.labels = [];
+      rtTempChart.data.datasets.forEach((ds) => (ds.data = []));
+      rtTempChart.update('none');
+      return;
+    }
+
+    const labels = data.map((s) => formatServerTimeForChart(s.server_ts));
+    const tin = data.map((s) => s.temp_inside_c);
+    const tout = data.map((s) => s.temp_outside_c);
+    const sp = data.map((s) => s.setpoint_c);
+
+    rtTempChart.data.labels = labels;
+    rtTempChart.data.datasets[0].data = tin;
+    rtTempChart.data.datasets[1].data = tout;
+    rtTempChart.data.datasets[2].data = sp;
+    rtTempChart.update('default');
+  }
+
+  // =========================================================================
+  // REALTIME CARD UPDATE
+  // =========================================================================
+  async function loadRealtime() {
+    if (!rtCard) return;
 
     const params = new URLSearchParams();
     params.append("device_id", serial);
@@ -418,20 +635,15 @@ async function loadRealtimeChart() {
 
     const payload = await resp.json();
     const rows = payload.results || payload.data || [];
-    if (!rows.length) {
-      // No data yet, just leave card as-is
-      return;
-    }
+    if (!rows.length) return;
 
     const s = rows[0];
-
     const ts = s.server_ts || s.device_ts || "";
+
     if (rtTs) {
       if (ts) {
         const d = new Date(ts);
-        const tsText = Number.isNaN(d.getTime())
-          ? ts
-          : d.toLocaleString(); //Broswer localtime
+        const tsText = Number.isNaN(d.getTime()) ? ts : d.toLocaleString();
         rtTs.textContent = "Last update: " + tsText;
       } else {
         rtTs.textContent = "Last update: --";
@@ -445,12 +657,11 @@ async function loadRealtimeChart() {
     if (rtOut) rtOut.textContent = s.output ?? "--";
   }
 
-  // ---------- NEW: localize table timestamps to browser timezone ----------
-
+  // =========================================================================
+  // TABLE TIMESTAMP LOCALIZATION
+  // =========================================================================
   function formatLocalDateTime(d) {
-    if (!(d instanceof Date) || Number.isNaN(d.getTime())) {
-      return "";
-    }
+    if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
     return d.toLocaleString(undefined, {
       year: "numeric",
       month: "2-digit",
@@ -464,62 +675,50 @@ async function loadRealtimeChart() {
     const cells = document.querySelectorAll(".js-localtime");
     cells.forEach((cell) => {
       const iso = cell.dataset.iso;
-      if (!iso) {
-        return;
-      }
+      if (!iso) return;
       const d = new Date(iso);
-      if (Number.isNaN(d.getTime())) {
-        return; // leave whatever was rendered
-      }
+      if (Number.isNaN(d.getTime())) return;
       cell.textContent = formatLocalDateTime(d);
     });
   }
 
-  // -----------------------------------------------------------------------
-
-  // Initial loads
+  // =========================================================================
+  // INITIALIZATION
+  // =========================================================================
   console.log("Device detail script: running initial loads");
   loadTelemetry(true);
   loadRealtime();
-  loadRealtimeChart();    // new realtime chart
-  localizeTableTimes(); // convert table times to broswer-local
+  loadRealtimeChart();
+  localizeTableTimes();
 
-  // Realtime poll every 5 seconds
+  // Polling intervals
   setInterval(loadRealtime, 15000);
-  setInterval(loadRealtimeChart, 15000); // realtime chart every 15 s
+  setInterval(loadRealtimeChart, 15000);
 
-  // Apply button behavior
+  // Apply button handler
   if (applyBtn) {
     applyBtn.addEventListener("click", function () {
       const fromVal = fromInput.value;
       const toVal = toInput.value;
 
-      // Case 1: both empty, treat as default 24h
       if (!fromVal && !toVal) {
         loadTelemetry(true);
         return;
       }
 
-      // Case 2: only one set, block and nag
       if (!fromVal || !toVal) {
-        alert(
-          "Please set both From and To, or leave both empty to show the last 24 hours."
-        );
+        alert("Please set both From and To, or leave both empty to show the last 24 hours.");
         return;
       }
 
-      // Case 3: both set, use explicit range
       loadTelemetry(false);
     });
   }
 
-  // CSV export - keep it in sync with the date range pickers
+  // CSV export handler
   const exportForm = document.getElementById("exportCsvForm");
   if (exportForm) {
     exportForm.addEventListener("submit", function (e) {
-      
-
-      // Hidden inputs in the form that will be sent as query parameters
       const csvStartInput = document.getElementById("csvStart");
       const csvEndInput = document.getElementById("csvEnd");
       const csvTzInput = document.getElementById("csvTz");
@@ -527,20 +726,13 @@ async function loadRealtimeChart() {
       const fromVal = fromInput.value;
       const toVal = toInput.value;
 
-      // Same behavior as chart:
-      // - Empty: backend uses last 24h
-      // - Both set: explicit range in browser local time with offset
       csvStartInput.value = fromVal ? toLocalIsoWithOffset(fromVal) : "";
       csvEndInput.value = toVal ? toLocalIsoWithOffset(toVal) : "";
 
-      // NEW: put browser timezone name into tz param, e.g. "America/Vancouver"
       if (csvTzInput) {
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
         csvTzInput.value = tz || "";
       }
-
     });
   }
-
-
 });
