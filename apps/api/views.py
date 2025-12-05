@@ -205,6 +205,86 @@ def logout_view(request):
     return redirect("login")
 
 
+@login_required
+@require_http_methods(["GET", "POST"])
+def user_settings(request):
+    """
+    User account settings page.
+    
+    Allows users to update their profile information:
+    - Username
+    - Email address
+    - First name
+    - Last name
+    - Password (optional)
+    """
+    user = request.user
+    
+    if request.method == "POST":
+        # Get form data
+        username = request.POST.get("username", "").strip()
+        email = request.POST.get("email", "").strip()
+        first_name = request.POST.get("first_name", "").strip()
+        last_name = request.POST.get("last_name", "").strip()
+        current_password = request.POST.get("current_password", "")
+        new_password = request.POST.get("new_password", "")
+        confirm_password = request.POST.get("confirm_password", "")
+        
+        errors = []
+        
+        # Validate username
+        if not username:
+            errors.append("Username is required.")
+        elif username != user.username:
+            # Check if username is already taken
+            if User.objects.filter(username=username).exclude(pk=user.pk).exists():
+                errors.append("This username is already taken.")
+        
+        # Validate email
+        if not email:
+            errors.append("Email address is required.")
+        elif email != user.email:
+            # Check if email is already taken
+            if User.objects.filter(email=email).exclude(pk=user.pk).exists():
+                errors.append("This email address is already in use.")
+        
+        # Validate password change (if attempting)
+        if new_password or confirm_password:
+            if not current_password:
+                errors.append("Current password is required to set a new password.")
+            elif not user.check_password(current_password):
+                errors.append("Current password is incorrect.")
+            elif new_password != confirm_password:
+                errors.append("New passwords do not match.")
+            elif len(new_password) < 8:
+                errors.append("New password must be at least 8 characters long.")
+        
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+        else:
+            # Update user fields
+            user.username = username
+            user.email = email
+            user.first_name = first_name
+            user.last_name = last_name
+            
+            # Update password if provided
+            if new_password:
+                user.set_password(new_password)
+                user.save()
+                # Re-authenticate to maintain session
+                login(request, user)
+                messages.success(request, "Your password has been updated. You have been re-authenticated.")
+            else:
+                user.save()
+                messages.success(request, "Your account settings have been updated.")
+            
+            return redirect("user_settings")
+    
+    return render(request, "dashboard/settings.html", {"user": user})
+
+
 # ---------------------------------------------------------------------------
 # Dashboard HTML views
 # ---------------------------------------------------------------------------

@@ -45,6 +45,11 @@ urlpatterns = [
         api_views.dashboard_register_device,
         name="dashboard_register_device",
     ),
+    path(
+        "dashboard/settings/",
+        api_views.user_settings,
+        name="user_settings",
+    ),
     
     path("about/", api_views.about, name="about"),
 

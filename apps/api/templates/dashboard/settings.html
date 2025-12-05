@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Account Settings | ThermoPatinoVerse{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+  <div class="settings-header">
+    <h2><i class="bi bi-gear-fill me-2"></i>Account Settings</h2>
+    <p class="text-muted">Manage your profile information and security settings</p>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <form method="post" class="settings-form">
+        {% csrf_token %}
+
+        <!-- Profile Information Section -->
+        <div class="settings-section">
+          <h4 class="section-title">
+            <i class="bi bi-person-circle me-2"></i>Profile Information
+          </h4>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="username" class="form-label">Username</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                id="username" 
+                name="username" 
+                value="{{ user.username }}"
+                required
+              >
+              <div class="form-text">Your unique identifier on the platform</div>
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label for="email" class="form-label">Email Address</label>
+              <input 
+                type="email" 
+                class="form-control" 
+                id="email" 
+                name="email" 
+                value="{{ user.email }}"
+                required
+              >
+              <div class="form-text">Used for notifications and account recovery</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="first_name" class="form-label">First Name</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                id="first_name" 
+                name="first_name" 
+                value="{{ user.first_name }}"
+              >
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label for="last_name" class="form-label">Last Name</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                id="last_name" 
+                name="last_name" 
+                value="{{ user.last_name }}"
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- Security Section -->
+        <div class="settings-section">
+          <h4 class="section-title">
+            <i class="bi bi-shield-lock me-2"></i>Change Password
+          </h4>
+          <p class="text-muted mb-3">Leave blank to keep your current password</p>
+
+          <div class="mb-3">
+            <label for="current_password" class="form-label">Current Password</label>
+            <input 
+              type="password" 
+              class="form-control" 
+              id="current_password" 
+              name="current_password"
+              autocomplete="current-password"
+            >
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="new_password" class="form-label">New Password</label>
+              <input 
+                type="password" 
+                class="form-control" 
+                id="new_password" 
+                name="new_password"
+                autocomplete="new-password"
+                minlength="8"
+              >
+              <div class="form-text">Minimum 8 characters</div>
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label for="confirm_password" class="form-label">Confirm New Password</label>
+              <input 
+                type="password" 
+                class="form-control" 
+                id="confirm_password" 
+                name="confirm_password"
+                autocomplete="new-password"
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- Account Info (Read-only) -->
+        <div class="settings-section">
+          <h4 class="section-title">
+            <i class="bi bi-info-circle me-2"></i>Account Information
+          </h4>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label text-muted">Date Joined</label>
+              <p class="form-control-plaintext">
+                <i class="bi bi-calendar-check me-1"></i>
+                {{ user.date_joined|date:"F d, Y" }} at {{ user.date_joined|time:"g:i A" }}
+              </p>
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label text-muted">Last Login</label>
+              <p class="form-control-plaintext">
+                <i class="bi bi-clock-history me-1"></i>
+                {% if user.last_login %}
+                  {{ user.last_login|date:"F d, Y" }} at {{ user.last_login|time:"g:i A" }}
+                {% else %}
+                  Never
+                {% endif %}
+              </p>
+            </div>
+          </div>
+
+          {% if user.is_staff %}
+          <div class="alert alert-info d-flex align-items-center">
+            <i class="bi bi-star-fill me-2"></i>
+            <div>
+              You have <strong>staff</strong> privileges. 
+              <a href="{% url 'admin:index' %}" class="alert-link">Access Admin Panel →</a>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Submit Button -->
+        <div class="settings-actions">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-check-lg me-2"></i>Save Changes
+          </button>
+          <a href="{% url 'dashboard_devices' %}" class="btn btn-outline-secondary btn-lg">
+            Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <div class="settings-sidebar">
+        <div class="sidebar-card">
+          <div class="avatar-placeholder">
+            <i class="bi bi-person-fill"></i>
+          </div>
+          <h5>{{ user.get_full_name|default:user.username }}</h5>
+          <p class="text-muted">@{{ user.username }}</p>
+          
+          <hr>
+          
+          <div class="quick-stats">
+            <div class="stat-item">
+              <span class="stat-label">Member since</span>
+              <span class="stat-value">{{ user.date_joined|date:"M Y" }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Account status</span>
+              <span class="stat-value">
+                {% if user.is_active %}
+                  <span class="badge bg-success">Active</span>
+                {% else %}
+                  <span class="badge bg-danger">Inactive</span>
+                {% endif %}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-card tips-card">
+          <h6><i class="bi bi-lightbulb me-2"></i>Security Tips</h6>
+          <ul class="tips-list">
+            <li>Use a strong, unique password</li>
+            <li>Enable two-factor authentication when available</li>
+            <li>Keep your email address up to date</li>
+            <li>Review your account activity regularly</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .settings-page {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .settings-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .settings-header h2 {
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  .settings-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .form-label {
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .form-control {
+    background: var(--bg-body);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 0.625rem 1rem;
+    transition: all 0.2s ease;
+  }
+
+  .form-control:focus {
+    background: var(--bg-body);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.15);
+    color: var(--text-primary);
+  }
+
+  .form-control-plaintext {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .form-text {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  .settings-actions {
+    display: flex;
+    gap: 1rem;
+    padding-top: 1rem;
+  }
+
+  .settings-sidebar {
+    position: sticky;
+    top: 1rem;
+  }
+
+  .sidebar-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  .avatar-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+  }
+
+  .avatar-placeholder i {
+    font-size: 2.5rem;
+    color: white;
+  }
+
+  .sidebar-card h5 {
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+  }
+
+  .quick-stats {
+    text-align: left;
+  }
+
+  .stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+  }
+
+  .stat-label {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .stat-value {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .tips-card {
+    text-align: left;
+  }
+
+  .tips-card h6 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+  }
+
+  .tips-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .tips-list li {
+    color: var(--text-secondary);
+    padding: 0.5rem 0;
+    padding-left: 1.25rem;
+    position: relative;
+    font-size: 0.9rem;
+  }
+
+  .tips-list li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--success-color);
+    font-weight: bold;
+  }
+
+  /* Responsive */
+  @media (max-width: 991px) {
+    .settings-sidebar {
+      margin-top: 2rem;
+    }
+  }
+</style>
+{% endblock %}
