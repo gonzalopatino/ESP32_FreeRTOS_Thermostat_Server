@@ -49,7 +49,9 @@
 
           <!-- LOGO + BRAND -->
           <a class="navbar-brand d-flex align-items-center" href="{% url 'dashboard_devices' %}">
-            <img src="{% static 'img/thermopatino_logo.png' %}" alt="ThermoPatinoVerse Logo" class="navbar-logo">
+            <div class="logo-container">
+              <img src="{% static 'img/thermopatino_logo.png' %}" alt="ThermoPatinoVerse Logo" class="navbar-logo">
+            </div>
             <span class="brand-text d-none d-sm-inline">ThermoPatinoVerse</span>
             <span class="brand-text-short d-sm-none">TPV</span>
           </a>
