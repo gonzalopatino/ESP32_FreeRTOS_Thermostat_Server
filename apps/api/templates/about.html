@@ -1,20 +1,668 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}About - Thermostat Platform{% endblock %}
+{% block title %}About - ThermoPatinoVerse{% endblock %}
 
 {% block content %}
-  <h1 class="mb-3">About this project</h1>
-  <p>
-    This is the Thermostat Cloud platform: a Django + PostgreSQL backend
-    that receives telemetry from ESP32-based thermostats and shows live
-    dashboards for each device.
-  </p>
-  <p>
-    Example metadata (you can wire these later):
-  </p>
-  <ul>
-    <li>Firmware version: <code>v1.0.0</code></li>
-    <li>Backend version: <code>v0.1.0</code></li>
-    <li>Owner: {{ request.user.username }}</li>
-  </ul>
+<div class="about-page">
+  
+  <!-- Hero Section -->
+  <section class="about-hero">
+    <div class="hero-content">
+      <div class="hero-icon">
+        <i class="bi bi-thermometer-half"></i>
+      </div>
+      <h1>ThermoPatinoVerse</h1>
+      <p class="hero-tagline">Smart IoT Thermostat Platform for the Modern Home</p>
+      <div class="hero-badges">
+        <span class="badge-item"><i class="bi bi-cpu me-1"></i>ESP32 Powered</span>
+        <span class="badge-item"><i class="bi bi-cloud me-1"></i>Cloud Connected</span>
+        <span class="badge-item"><i class="bi bi-graph-up me-1"></i>Real-time Analytics</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Overview Section -->
+  <section class="about-section">
+    <div class="row align-items-center">
+      <div class="col-lg-6">
+        <h2><i class="bi bi-lightbulb me-2"></i>Project Overview</h2>
+        <p class="lead">
+          ThermoPatinoVerse is a complete IoT thermostat ecosystem combining embedded firmware, 
+          cloud infrastructure, and an intuitive web dashboard for monitoring and controlling 
+          your home climate with precision.
+        </p>
+        <p>
+          Built with a focus on reliability, security, and real-time performance, this platform 
+          demonstrates modern IoT best practices; from FreeRTOS task management on the edge device 
+          to secure API authentication and responsive data visualization in the cloud.
+        </p>
+      </div>
+      <div class="col-lg-6">
+        <div class="feature-card highlight-card">
+          <div class="feature-icon">
+            <i class="bi bi-diagram-3"></i>
+          </div>
+          <h4>End-to-End Solution</h4>
+          <p>From sensor to dashboard: a complete IoT architecture showcasing embedded systems, 
+             secure APIs, real-time data streaming, and modern web technologies.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture Section -->
+  <section class="about-section">
+    <h2 class="section-title"><i class="bi bi-layers me-2"></i>System Architecture</h2>
+    <div class="architecture-grid">
+      
+      <div class="arch-card">
+        <div class="arch-icon firmware">
+          <i class="bi bi-cpu-fill"></i>
+        </div>
+        <h4>ESP32 Firmware</h4>
+        <p>FreeRTOS-based embedded application with modular task architecture for sensors, 
+           control logic, display, and network communication.</p>
+        <ul class="tech-list">
+          <li><i class="bi bi-check2"></i>AHT20 Temperature Sensors</li>
+          <li><i class="bi bi-check2"></i>Hysteresis Control Algorithm</li>
+          <li><i class="bi bi-check2"></i>LCD Display Interface</li>
+          <li><i class="bi bi-check2"></i>Watchdog Task Monitoring</li>
+          <li><i class="bi bi-check2"></i>Secure HTTPS Telemetry</li>
+        </ul>
+      </div>
+
+      <div class="arch-card">
+        <div class="arch-icon backend">
+          <i class="bi bi-server"></i>
+        </div>
+        <h4>Cloud Backend</h4>
+        <p>Django REST API with PostgreSQL database for device management, telemetry ingestion, 
+           and secure user authentication.</p>
+        <ul class="tech-list">
+          <li><i class="bi bi-check2"></i>Django 5.x Framework</li>
+          <li><i class="bi bi-check2"></i>PostgreSQL Database</li>
+          <li><i class="bi bi-check2"></i>Device API Key Authentication</li>
+          <li><i class="bi bi-check2"></i>Rate Limiting & Security</li>
+          <li><i class="bi bi-check2"></i>RESTful API Design</li>
+        </ul>
+      </div>
+
+      <div class="arch-card">
+        <div class="arch-icon frontend">
+          <i class="bi bi-window-desktop"></i>
+        </div>
+        <h4>Web Dashboard</h4>
+        <p>Responsive web interface with real-time data visualization, dark/light themes, 
+           and intuitive device management.</p>
+        <ul class="tech-list">
+          <li><i class="bi bi-check2"></i>Chart.js Visualizations</li>
+          <li><i class="bi bi-check2"></i>Bootstrap 5 UI Framework</li>
+          <li><i class="bi bi-check2"></i>Dark/Light Mode Toggle</li>
+          <li><i class="bi bi-check2"></i>Mobile-Responsive Design</li>
+          <li><i class="bi bi-check2"></i>CSV Data Export</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="about-section">
+    <h2 class="section-title"><i class="bi bi-stars me-2"></i>Key Features</h2>
+    <div class="features-grid">
+      
+      <div class="feature-item">
+        <div class="feature-icon-sm"><i class="bi bi-thermometer-sun"></i></div>
+        <h5>Precision Temperature Control</h5>
+        <p>Configurable setpoint and hysteresis band for accurate climate management with 
+           support for heating and cooling modes.</p>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-icon-sm"><i class="bi bi-broadcast"></i></div>
+        <h5>Real-time Telemetry</h5>
+        <p>Live streaming of temperature data with configurable sample rates and automatic 
+           dashboard updates every 15 seconds.</p>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-icon-sm"><i class="bi bi-shield-lock"></i></div>
+        <h5>Secure Device Authentication</h5>
+        <p>Per-device API keys with SHA-256 hashing, key rotation support, and timing-attack 
+           resistant validation.</p>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-icon-sm"><i class="bi bi-graph-up-arrow"></i></div>
+        <h5>Historical Analytics</h5>
+        <p>Interactive temperature charts with custom date ranges, trend analysis, and 
+           CSV export for offline analysis.</p>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-icon-sm"><i class="bi bi-phone"></i></div>
+        <h5>Multi-Device Management</h5>
+        <p>Register and monitor multiple thermostats from a single dashboard with 
+           per-device configuration and statistics.</p>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-icon-sm"><i class="bi bi-palette"></i></div>
+        <h5>Modern UI/UX</h5>
+        <p>Clean, professional interface with dark/light theme support, smooth animations, 
+           and accessibility features.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Technical Specs Section -->
+  <section class="about-section">
+    <h2 class="section-title"><i class="bi bi-gear me-2"></i>Technical Specifications</h2>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="specs-card">
+          <h5><i class="bi bi-cpu me-2"></i>Firmware</h5>
+          <table class="specs-table">
+            <tr><td>Platform</td><td>ESP32 (Espressif)</td></tr>
+            <tr><td>RTOS</td><td>FreeRTOS</td></tr>
+            <tr><td>Framework</td><td>ESP-IDF</td></tr>
+            <tr><td>Version</td><td><code>v0.1.0</code></td></tr>
+            <tr><td>Telemetry Interval</td><td>15 seconds (configurable)</td></tr>
+            <tr><td>Sensor Sampling</td><td>500ms</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="specs-card">
+          <h5><i class="bi bi-cloud me-2"></i>Backend</h5>
+          <table class="specs-table">
+            <tr><td>Framework</td><td>Django 5.x</td></tr>
+            <tr><td>Database</td><td>PostgreSQL</td></tr>
+            <tr><td>API</td><td>REST / JSON</td></tr>
+            <tr><td>Version</td><td><code>v0.1.0</code></td></tr>
+            <tr><td>Authentication</td><td>Session + API Key</td></tr>
+            <tr><td>Hosting</td><td>Cloud-Ready</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Developer Section -->
+  <section class="about-section developer-section">
+    <div class="row align-items-center">
+      <div class="col-lg-8">
+        <h2><i class="bi bi-person-badge me-2"></i>About the Developer</h2>
+        <p class="lead">
+          Designed and developed by <strong>Gonzalo Patiño</strong>
+        </p>
+        <p>
+          This project showcases a full-stack IoT solution combining expertise in embedded systems 
+          programming, cloud backend development, and modern web technologies. It demonstrates 
+          proficiency in:
+        </p>
+        <div class="skill-tags">
+          <span class="skill-tag">Embedded C/C++</span>
+          <span class="skill-tag">FreeRTOS</span>
+          <span class="skill-tag">ESP-IDF</span>
+          <span class="skill-tag">Python</span>
+          <span class="skill-tag">Django</span>
+          <span class="skill-tag">PostgreSQL</span>
+          <span class="skill-tag">REST APIs</span>
+          <span class="skill-tag">JavaScript</span>
+          <span class="skill-tag">Bootstrap</span>
+          <span class="skill-tag">IoT Architecture</span>
+        </div>
+      </div>
+      <div class="col-lg-4 text-center">
+        <div class="developer-links">
+          <a href="https://github.com/gonzalopatino" target="_blank" rel="noopener" class="dev-link">
+            <i class="bi bi-github"></i>
+            <span>GitHub</span>
+          </a>
+          <a href="https://linkedin.com/in/gonzalopatino" target="_blank" rel="noopener" class="dev-link">
+            <i class="bi bi-linkedin"></i>
+            <span>LinkedIn</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Version Info -->
+  <section class="about-section version-section">
+    <div class="version-info">
+      <div class="version-item">
+        <span class="version-label">Firmware Version</span>
+        <span class="version-value"><code>v0.1.0</code></span>
+      </div>
+      <div class="version-divider"></div>
+      <div class="version-item">
+        <span class="version-label">Backend Version</span>
+        <span class="version-value"><code>v0.1.0</code></span>
+      </div>
+      <div class="version-divider"></div>
+      <div class="version-item">
+        <span class="version-label">Last Updated</span>
+        <span class="version-value">December 2025</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<style>
+/* About Page Styles */
+.about-page {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* Hero Section */
+.about-hero {
+  text-align: center;
+  padding: 3rem 2rem;
+  margin-bottom: 2rem;
+  background: var(--tp-gradient-primary);
+  border-radius: var(--tp-radius-xl);
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+}
+
+.about-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+  animation: pulse 4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 0.3; }
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  text-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.about-hero h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+.hero-tagline {
+  font-size: 1.25rem;
+  opacity: 0.95;
+  margin-bottom: 1.5rem;
+}
+
+.hero-badges {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.badge-item {
+  background: rgba(255,255,255,0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+}
+
+/* Sections */
+.about-section {
+  margin-bottom: 3rem;
+  padding: 2rem;
+  background: var(--tp-card-bg);
+  border-radius: var(--tp-radius-lg);
+  border: 1px solid var(--tp-border);
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--tp-text);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--tp-primary);
+  display: inline-block;
+}
+
+/* Architecture Grid */
+.architecture-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.arch-card {
+  background: var(--tp-bg-secondary);
+  border-radius: var(--tp-radius-lg);
+  padding: 1.5rem;
+  border: 1px solid var(--tp-border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.arch-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--tp-shadow-lg);
+}
+
+.arch-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--tp-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  color: #ffffff;
+  margin-bottom: 1rem;
+}
+
+.arch-icon.firmware { background: linear-gradient(135deg, #10b981, #059669); }
+.arch-icon.backend { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+.arch-icon.frontend { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
+
+.arch-card h4 {
+  color: var(--tp-text);
+  margin-bottom: 0.75rem;
+}
+
+.arch-card p {
+  color: var(--tp-text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.tech-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tech-list li {
+  color: var(--tp-text-secondary);
+  font-size: 0.85rem;
+  padding: 0.375rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tech-list i {
+  color: var(--tp-success);
+}
+
+/* Features Grid */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.feature-item {
+  padding: 1.25rem;
+  background: var(--tp-bg-secondary);
+  border-radius: var(--tp-radius);
+  border: 1px solid var(--tp-border);
+  transition: border-color 0.2s ease;
+}
+
+.feature-item:hover {
+  border-color: var(--tp-primary);
+}
+
+.feature-icon-sm {
+  width: 44px;
+  height: 44px;
+  background: var(--tp-gradient-primary);
+  border-radius: var(--tp-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.feature-item h5 {
+  color: var(--tp-text);
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.feature-item p {
+  color: var(--tp-text-secondary);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Highlight Card */
+.highlight-card {
+  background: var(--tp-bg-secondary);
+  border-radius: var(--tp-radius-lg);
+  padding: 2rem;
+  border: 1px solid var(--tp-border);
+  text-align: center;
+}
+
+.highlight-card .feature-icon {
+  width: 80px;
+  height: 80px;
+  background: var(--tp-gradient-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 2rem;
+  margin: 0 auto 1.5rem;
+  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.3);
+}
+
+/* Specs Cards */
+.specs-card {
+  background: var(--tp-bg-secondary);
+  border-radius: var(--tp-radius);
+  padding: 1.5rem;
+  border: 1px solid var(--tp-border);
+  height: 100%;
+}
+
+.specs-card h5 {
+  color: var(--tp-text);
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.specs-table {
+  width: 100%;
+}
+
+.specs-table tr td {
+  padding: 0.5rem 0;
+  color: var(--tp-text-secondary);
+  font-size: 0.9rem;
+}
+
+.specs-table tr td:first-child {
+  font-weight: 500;
+  color: var(--tp-text);
+}
+
+.specs-table tr td:last-child {
+  text-align: right;
+}
+
+.specs-table code {
+  background: var(--tp-primary);
+  color: #ffffff;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+/* Developer Section */
+.developer-section {
+  background: var(--tp-bg-secondary);
+}
+
+.skill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.skill-tag {
+  background: var(--tp-card-bg);
+  color: var(--tp-text);
+  padding: 0.375rem 0.75rem;
+  border-radius: 50px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid var(--tp-border);
+}
+
+.developer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+.dev-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.5rem;
+  background: var(--tp-card-bg);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius);
+  color: var(--tp-text);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  width: 180px;
+}
+
+.dev-link:hover {
+  border-color: var(--tp-primary);
+  color: var(--tp-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--tp-shadow-md);
+}
+
+.dev-link i {
+  font-size: 1.5rem;
+}
+
+/* Version Section */
+.version-section {
+  background: transparent;
+  border: none;
+  padding: 1rem 0;
+}
+
+.version-info {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: var(--tp-bg-secondary);
+  border-radius: var(--tp-radius-lg);
+  border: 1px solid var(--tp-border);
+}
+
+.version-item {
+  text-align: center;
+}
+
+.version-label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--tp-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.version-value {
+  color: var(--tp-text);
+  font-weight: 600;
+}
+
+.version-value code {
+  background: var(--tp-primary);
+  color: #ffffff;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+}
+
+.version-divider {
+  width: 1px;
+  height: 40px;
+  background: var(--tp-border);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .about-hero {
+    padding: 2rem 1rem;
+  }
+  
+  .about-hero h1 {
+    font-size: 1.75rem;
+  }
+  
+  .hero-tagline {
+    font-size: 1rem;
+  }
+  
+  .about-section {
+    padding: 1.5rem;
+  }
+  
+  .architecture-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .version-info {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .version-divider {
+    width: 60px;
+    height: 1px;
+  }
+  
+  .developer-links {
+    margin-top: 1.5rem;
+  }
+}
+</style>
 {% endblock %}
