@@ -26,8 +26,43 @@ document.addEventListener("DOMContentLoaded", function () {
   let tempChart = null;
   let rtTempChart = null; //new: realtime chart instance
 
+  // Get theme-aware colors for charts
+  function getChartColors() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+      text: isDark ? '#f1f5f9' : '#0f172a',
+      grid: isDark ? 'rgba(148, 163, 184, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+      muted: isDark ? '#94a3b8' : '#64748b'
+    };
+  }
+
+  // Update chart colors when theme changes
+  function updateChartColors(chart) {
+    if (!chart) return;
+    const colors = getChartColors();
+    
+    // Update scales
+    if (chart.options.scales.x) {
+      chart.options.scales.x.ticks.color = colors.text;
+      chart.options.scales.x.grid.color = colors.grid;
+    }
+    if (chart.options.scales.y) {
+      chart.options.scales.y.ticks.color = colors.text;
+      chart.options.scales.y.grid.color = colors.grid;
+    }
+    
+    // Update legend
+    if (chart.options.plugins.legend) {
+      chart.options.plugins.legend.labels = chart.options.plugins.legend.labels || {};
+      chart.options.plugins.legend.labels.color = colors.text;
+    }
+    
+    chart.update('none'); // Update without animation
+  }
+
   function createTempChart(ctx) {
     if (!ctx) return null;
+    const colors = getChartColors();
 
     return new Chart(ctx, {
       type: "line",
@@ -67,6 +102,9 @@ document.addEventListener("DOMContentLoaded", function () {
         plugins: {
           legend: {
             position: "top",
+            labels: {
+              color: colors.text
+            }
           },
         },
         scales: {
@@ -74,10 +112,20 @@ document.addEventListener("DOMContentLoaded", function () {
             ticks: {
               autoSkip: true,
               maxTicksLimit: 8,
+              color: colors.text
             },
+            grid: {
+              color: colors.grid
+            }
           },
           y: {
             beginAtZero: false,
+            ticks: {
+              color: colors.text
+            },
+            grid: {
+              color: colors.grid
+            }
           },
         },
       },
@@ -89,6 +137,18 @@ document.addEventListener("DOMContentLoaded", function () {
   //Realtime chart instance
    if (rtTempCtx) {
     rtTempChart = createTempChart(rtTempCtx);
+  }
+
+  // Listen for theme changes and update charts
+  const themeToggle = document.getElementById('themeToggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', function() {
+      // Small delay to let the theme change take effect
+      setTimeout(() => {
+        updateChartColors(tempChart);
+        updateChartColors(rtTempChart);
+      }, 50);
+    });
   }
 
   function formatServerTimeForChart(isoString) {

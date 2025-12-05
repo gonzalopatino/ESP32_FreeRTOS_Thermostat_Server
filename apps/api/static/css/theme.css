@@ -115,6 +115,12 @@ body {
   line-height: 1.6;
 }
 
+/* Headings */
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  color: var(--tp-text);
+}
+
 /* --------------------------------------------------------------------------
    Theme Toggle Button
    -------------------------------------------------------------------------- */
@@ -274,10 +280,44 @@ body {
   border-bottom: 1px solid var(--tp-border);
   padding: 1rem 1.25rem;
   font-weight: 600;
+  color: var(--tp-text);
 }
 
 .card-body {
   padding: 1.5rem;
+}
+
+/* Card titles and headings */
+.card-title,
+.card-body h5,
+.card-body h4,
+.card-body h3 {
+  color: var(--tp-text) !important;
+  font-weight: 600;
+}
+
+/* Realtime status card - Current status widget */
+#realtime-card .card-body {
+  color: var(--tp-text);
+}
+
+#realtime-card .card-title {
+  color: var(--tp-text) !important;
+}
+
+#realtime-card .small.text-muted,
+#realtime-card #rt-timestamp {
+  color: var(--tp-text-muted) !important;
+}
+
+#realtime-card .fw-semibold {
+  color: var(--tp-text) !important;
+}
+
+/* Small text labels in status cards */
+.card-body .small.text-muted,
+.card-body div.small.text-muted {
+  color: var(--tp-text-muted) !important;
 }
 
 /* Stat cards for dashboard */
