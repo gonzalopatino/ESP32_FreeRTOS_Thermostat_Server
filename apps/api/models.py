@@ -6,12 +6,180 @@ import secrets
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.db.models import Sum
+from django.db.models.functions import Coalesce
 
 from django.conf import settings
 from django.utils.timezone import now
 
 
 User = get_user_model()
+
+
+# ============================================================================
+# STORAGE PLANS
+# ============================================================================
+
+class StoragePlan:
+    """Storage plan definitions with limits in bytes."""
+    FREE = 'free'
+    STANDARD = 'standard'
+    PREMIUM = 'premium'
+    
+    CHOICES = [
+        (FREE, 'Free (2 GB)'),
+        (STANDARD, 'Standard (10 GB)'),
+        (PREMIUM, 'Premium (1 TB)'),
+    ]
+    
+    # Limits in bytes
+    LIMITS = {
+        FREE: 2 * 1024 * 1024 * 1024,        # 2 GB
+        STANDARD: 10 * 1024 * 1024 * 1024,   # 10 GB
+        PREMIUM: 1024 * 1024 * 1024 * 1024,  # 1 TB
+    }
+    
+    @classmethod
+    def get_limit_bytes(cls, plan):
+        return cls.LIMITS.get(plan, cls.LIMITS[cls.FREE])
+    
+    @classmethod
+    def get_limit_display(cls, plan):
+        """Returns human-readable limit."""
+        limit = cls.get_limit_bytes(plan)
+        if limit >= 1024 * 1024 * 1024 * 1024:
+            return f"{limit // (1024 * 1024 * 1024 * 1024)} TB"
+        elif limit >= 1024 * 1024 * 1024:
+            return f"{limit // (1024 * 1024 * 1024)} GB"
+        elif limit >= 1024 * 1024:
+            return f"{limit // (1024 * 1024)} MB"
+        return f"{limit} bytes"
+
+
+class UserStorageProfile(models.Model):
+    """
+    Tracks a user's storage plan and cached usage.
+    """
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="storage_profile",
+    )
+    
+    plan = models.CharField(
+        max_length=20,
+        choices=StoragePlan.CHOICES,
+        default=StoragePlan.FREE,
+    )
+    
+    # Cached storage usage (updated periodically or on data changes)
+    cached_usage_bytes = models.BigIntegerField(default=0)
+    usage_last_calculated = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "User Storage Profile"
+        verbose_name_plural = "User Storage Profiles"
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_plan_display()}"
+    
+    @property
+    def storage_limit_bytes(self):
+        return StoragePlan.get_limit_bytes(self.plan)
+    
+    @property
+    def storage_limit_display(self):
+        return StoragePlan.get_limit_display(self.plan)
+    
+    @property
+    def usage_percentage(self):
+        if self.storage_limit_bytes == 0:
+            return 100
+        return min(100, (self.cached_usage_bytes / self.storage_limit_bytes) * 100)
+    
+    @property
+    def is_storage_full(self):
+        return self.cached_usage_bytes >= self.storage_limit_bytes
+    
+    @property
+    def remaining_bytes(self):
+        return max(0, self.storage_limit_bytes - self.cached_usage_bytes)
+    
+    def calculate_actual_usage(self):
+        """
+        Calculate actual storage usage from all user's telemetry data.
+        This queries the database to get the actual size.
+        """
+        from django.db import connection
+        
+        # Get all device serial numbers for this user
+        device_serials = list(
+            Device.objects.filter(owner=self.user).values_list('serial_number', flat=True)
+        )
+        
+        if not device_serials:
+            return 0
+        
+        # Calculate approximate row size in bytes
+        # This is an estimation based on typical telemetry snapshot fields
+        # For more accuracy, you could use pg_total_relation_size in PostgreSQL
+        total_bytes = 0
+        
+        for serial in device_serials:
+            snapshots = TelemetrySnapshot.objects.filter(device_id=serial)
+            count = snapshots.count()
+            
+            if count > 0:
+                # Estimate ~500 bytes per row (including indexes and overhead)
+                # Actual size varies based on raw_payload size
+                # For more accuracy, sample a few rows and measure their JSON size
+                sample = snapshots.order_by('-server_ts')[:100]
+                
+                avg_payload_size = 0
+                for s in sample:
+                    if s.raw_payload:
+                        import json
+                        avg_payload_size += len(json.dumps(s.raw_payload))
+                
+                if sample:
+                    avg_payload_size = avg_payload_size / len(sample)
+                
+                # Base row size (fixed fields) + average payload + index overhead
+                base_row_size = 200  # Fixed fields
+                index_overhead = 100  # B-tree index overhead per row
+                row_size = base_row_size + avg_payload_size + index_overhead
+                
+                total_bytes += int(count * row_size)
+        
+        return total_bytes
+    
+    def refresh_usage_cache(self):
+        """Recalculate and cache the storage usage."""
+        self.cached_usage_bytes = self.calculate_actual_usage()
+        self.usage_last_calculated = timezone.now()
+        self.save(update_fields=['cached_usage_bytes', 'usage_last_calculated'])
+        return self.cached_usage_bytes
+    
+    def format_bytes(self, bytes_val):
+        """Format bytes to human-readable string."""
+        if bytes_val >= 1024 * 1024 * 1024:
+            return f"{bytes_val / (1024 * 1024 * 1024):.2f} GB"
+        elif bytes_val >= 1024 * 1024:
+            return f"{bytes_val / (1024 * 1024):.2f} MB"
+        elif bytes_val >= 1024:
+            return f"{bytes_val / 1024:.2f} KB"
+        return f"{bytes_val} bytes"
+    
+    @property
+    def usage_display(self):
+        return self.format_bytes(self.cached_usage_bytes)
+    
+    @property
+    def remaining_display(self):
+        return self.format_bytes(self.remaining_bytes)
 
 
 

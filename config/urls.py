@@ -50,6 +50,11 @@ urlpatterns = [
         api_views.user_settings,
         name="user_settings",
     ),
+    path(
+        "dashboard/data-management/",
+        api_views.data_management,
+        name="data_management",
+    ),
     
     path("about/", api_views.about, name="about"),
 

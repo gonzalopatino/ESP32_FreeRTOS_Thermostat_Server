@@ -1,0 +1,590 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Data Management | ThermoPatinoVerse{% endblock %}
+
+{% block content %}
+<div class="data-management-page">
+  <div class="page-header">
+    <h2><i class="bi bi-database-gear me-2"></i>Data Management</h2>
+    <p class="text-muted">Monitor your storage usage and manage telemetry data</p>
+  </div>
+
+  <div class="row">
+    <!-- Storage Overview Card -->
+    <div class="col-lg-6 mb-4">
+      <div class="card storage-card">
+        <div class="card-body">
+          <h5 class="card-title mb-4">
+            <i class="bi bi-pie-chart me-2 text-primary"></i>Storage Usage
+          </h5>
+          
+          <!-- Storage Gauge -->
+          <div class="storage-gauge-container">
+            <div class="gauge-wrapper">
+              <svg class="gauge" viewBox="0 0 200 120">
+                <!-- Background arc -->
+                <path 
+                  class="gauge-bg"
+                  d="M 20 100 A 80 80 0 0 1 180 100"
+                  fill="none"
+                  stroke-width="16"
+                  stroke-linecap="round"
+                />
+                <!-- Filled arc -->
+                <path 
+                  class="gauge-fill"
+                  d="M 20 100 A 80 80 0 0 1 180 100"
+                  fill="none"
+                  stroke-width="16"
+                  stroke-linecap="round"
+                  id="gaugeFill"
+                />
+                <!-- Center text -->
+                <text x="100" y="85" class="gauge-text" text-anchor="middle">
+                  {{ storage_profile.usage_percentage|floatformat:1 }}%
+                </text>
+                <text x="100" y="105" class="gauge-subtext" text-anchor="middle">
+                  Used
+                </text>
+              </svg>
+            </div>
+            
+            <div class="storage-stats">
+              <div class="stat-row">
+                <span class="stat-label">Used</span>
+                <span class="stat-value">{{ storage_profile.usage_display }}</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Available</span>
+                <span class="stat-value text-success">{{ storage_profile.remaining_display }}</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">Total Limit</span>
+                <span class="stat-value">{{ storage_profile.storage_limit_display }}</span>
+              </div>
+              <hr>
+              <div class="stat-row">
+                <span class="stat-label">Total Records</span>
+                <span class="stat-value">{{ total_count|default:0 }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Plan Badge -->
+          <div class="plan-badge-container mt-4">
+            <span class="plan-badge plan-{{ storage_profile.plan }}">
+              <i class="bi bi-award me-1"></i>
+              {{ storage_profile.get_plan_display }}
+            </span>
+            
+            {% if storage_profile.is_storage_full %}
+            <div class="alert alert-danger mt-3 mb-0">
+              <i class="bi bi-exclamation-triangle-fill me-2"></i>
+              <strong>Storage Full!</strong> New telemetry data will be rejected until you delete old records.
+            </div>
+            {% elif storage_profile.usage_percentage >= 90 %}
+            <div class="alert alert-warning mt-3 mb-0">
+              <i class="bi bi-exclamation-circle me-2"></i>
+              <strong>Almost Full!</strong> Consider deleting old data or upgrading your plan.
+            </div>
+            {% endif %}
+          </div>
+          
+          <!-- Refresh Button -->
+          <form method="post" class="mt-3">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="refresh_usage">
+            <button type="submit" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-arrow-clockwise me-1"></i>Recalculate Usage
+            </button>
+            {% if storage_profile.usage_last_calculated %}
+            <small class="text-muted ms-2">
+              Last updated: {{ storage_profile.usage_last_calculated|timesince }} ago
+            </small>
+            {% endif %}
+          </form>
+        </div>
+      </div>
+      
+      <!-- Plan Comparison -->
+      <div class="card mt-4">
+        <div class="card-body">
+          <h5 class="card-title mb-3">
+            <i class="bi bi-collection me-2 text-primary"></i>Available Plans
+          </h5>
+          <div class="plans-grid">
+            <div class="plan-item {% if storage_profile.plan == 'free' %}active{% endif %}">
+              <div class="plan-name">Free</div>
+              <div class="plan-limit">2 GB</div>
+              {% if storage_profile.plan == 'free' %}
+              <span class="badge bg-primary">Current</span>
+              {% endif %}
+            </div>
+            <div class="plan-item {% if storage_profile.plan == 'standard' %}active{% endif %}">
+              <div class="plan-name">Standard</div>
+              <div class="plan-limit">10 GB</div>
+              {% if storage_profile.plan == 'standard' %}
+              <span class="badge bg-primary">Current</span>
+              {% endif %}
+            </div>
+            <div class="plan-item {% if storage_profile.plan == 'premium' %}active{% endif %}">
+              <div class="plan-name">Premium</div>
+              <div class="plan-limit">1 TB</div>
+              {% if storage_profile.plan == 'premium' %}
+              <span class="badge bg-primary">Current</span>
+              {% endif %}
+            </div>
+          </div>
+          <p class="text-muted small mt-3 mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            Contact support to upgrade your plan.
+          </p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Device Data Management -->
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title mb-4">
+            <i class="bi bi-hdd-stack me-2 text-primary"></i>Device Data
+          </h5>
+          
+          {% if device_stats %}
+          <div class="device-list">
+            {% for stat in device_stats %}
+            <div class="device-data-item">
+              <div class="device-info">
+                <div class="device-name">
+                  <i class="bi bi-cpu me-2"></i>
+                  {{ stat.device.name|default:stat.device.serial_number }}
+                </div>
+                <div class="device-stats-row">
+                  <span class="record-count">{{ stat.count|default:0 }} records</span>
+                  {% if stat.first_date and stat.last_date %}
+                  <span class="date-range text-muted">
+                    {{ stat.first_date|date:"M d, Y" }} - {{ stat.last_date|date:"M d, Y" }}
+                  </span>
+                  {% endif %}
+                </div>
+              </div>
+              
+              {% if stat.count > 0 %}
+              <div class="device-actions">
+                <button 
+                  type="button" 
+                  class="btn btn-outline-danger btn-sm"
+                  data-bs-toggle="modal" 
+                  data-bs-target="#deleteDeviceModal"
+                  data-device-serial="{{ stat.device.serial_number }}"
+                  data-device-name="{{ stat.device.name|default:stat.device.serial_number }}"
+                  data-record-count="{{ stat.count }}"
+                >
+                  <i class="bi bi-trash me-1"></i>Delete All
+                </button>
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="bi bi-inbox display-6 d-block mb-3"></i>
+            <p>No devices found. Register a device to start collecting data.</p>
+            <a href="{% url 'dashboard_register_device' %}" class="btn btn-primary btn-sm">
+              <i class="bi bi-plus-lg me-1"></i>Register Device
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      
+      <!-- Date Range Deletion -->
+      {% if device_stats %}
+      <div class="card mt-4">
+        <div class="card-body">
+          <h5 class="card-title mb-3">
+            <i class="bi bi-calendar-range me-2 text-primary"></i>Delete by Date Range
+          </h5>
+          
+          <form method="post" id="dateRangeForm">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_date_range">
+            
+            <div class="mb-3">
+              <label for="deviceSelect" class="form-label">Device</label>
+              <select class="form-select" id="deviceSelect" name="device_serial" required>
+                <option value="">Select a device...</option>
+                {% for stat in device_stats %}
+                <option value="{{ stat.device.serial_number }}">
+                  {{ stat.device.name|default:stat.device.serial_number }} ({{ stat.count }} records)
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="fromDate" class="form-label">From Date</label>
+                <input type="date" class="form-control" id="fromDate" name="from_date" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="toDate" class="form-label">To Date</label>
+                <input type="date" class="form-control" id="toDate" name="to_date" required>
+              </div>
+            </div>
+            
+            <button type="submit" class="btn btn-outline-danger">
+              <i class="bi bi-trash me-1"></i>Delete Records in Range
+            </button>
+          </form>
+        </div>
+      </div>
+      
+      <!-- Delete All Data (Danger Zone) -->
+      <div class="card mt-4 border-danger">
+        <div class="card-header bg-danger-subtle text-danger">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <strong>Danger Zone</strong>
+        </div>
+        <div class="card-body">
+          <p class="mb-3">Delete ALL telemetry data from ALL your devices. This action cannot be undone.</p>
+          
+          <button 
+            type="button" 
+            class="btn btn-danger"
+            data-bs-toggle="modal" 
+            data-bs-target="#deleteAllModal"
+          >
+            <i class="bi bi-trash-fill me-1"></i>Delete All My Data
+          </button>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Delete Device Data Modal -->
+<div class="modal fade" id="deleteDeviceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger-subtle">
+        <h5 class="modal-title text-danger">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Deletion
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete_device_data">
+        <input type="hidden" name="device_serial" id="modalDeviceSerial">
+        
+        <div class="modal-body">
+          <p>Are you sure you want to delete all telemetry data from:</p>
+          <p class="fw-bold fs-5" id="modalDeviceName"></p>
+          <p class="text-danger">
+            <strong id="modalRecordCount"></strong> records will be permanently deleted.
+          </p>
+          <p class="text-muted small">This action cannot be undone.</p>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i>Delete All Data
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Delete All Data Modal -->
+<div class="modal fade" id="deleteAllModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger">
+        <h5 class="modal-title text-white">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>Delete All Data
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete_all_data">
+        
+        <div class="modal-body">
+          <div class="alert alert-danger">
+            <strong>Warning!</strong> This will permanently delete ALL telemetry data from ALL your devices.
+          </div>
+          
+          <p>Total records to be deleted: <strong>{{ total_count }}</strong></p>
+          
+          <div class="mb-3">
+            <label for="confirmInput" class="form-label">
+              Type <code>DELETE ALL MY DATA</code> to confirm:
+            </label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="confirmInput" 
+              name="confirm_delete_all"
+              autocomplete="off"
+              required
+            >
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger" id="confirmDeleteAllBtn" disabled>
+            <i class="bi bi-trash-fill me-1"></i>Delete Everything
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  .data-management-page {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .page-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .page-header h2 {
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  .storage-card {
+    background: var(--card-bg);
+  }
+
+  /* Storage Gauge */
+  .storage-gauge-container {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+  }
+
+  .gauge-wrapper {
+    flex: 0 0 200px;
+  }
+
+  .gauge {
+    width: 100%;
+    height: auto;
+  }
+
+  .gauge-bg {
+    stroke: var(--border-color);
+  }
+
+  .gauge-fill {
+    stroke: var(--bs-primary);
+    stroke-dasharray: 251.2;
+    stroke-dashoffset: calc(251.2 - (251.2 * {{ storage_profile.usage_percentage }} / 100));
+    transition: stroke-dashoffset 0.5s ease;
+  }
+
+  {% if storage_profile.usage_percentage >= 90 %}
+  .gauge-fill {
+    stroke: var(--bs-danger);
+  }
+  {% elif storage_profile.usage_percentage >= 70 %}
+  .gauge-fill {
+    stroke: var(--bs-warning);
+  }
+  {% endif %}
+
+  .gauge-text {
+    font-size: 28px;
+    font-weight: 700;
+    fill: var(--text-primary);
+  }
+
+  .gauge-subtext {
+    font-size: 12px;
+    fill: var(--text-muted);
+  }
+
+  .storage-stats {
+    flex: 1;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .stat-row:last-child {
+    border-bottom: none;
+  }
+
+  .stat-label {
+    color: var(--text-muted);
+  }
+
+  .stat-value {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  /* Plan Badge */
+  .plan-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .plan-free {
+    background: rgba(108, 117, 125, 0.15);
+    color: var(--bs-secondary);
+  }
+
+  .plan-standard {
+    background: rgba(13, 110, 253, 0.15);
+    color: var(--bs-primary);
+  }
+
+  .plan-premium {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.2));
+    color: #d97706;
+  }
+
+  /* Plans Grid */
+  .plans-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+
+  .plan-item {
+    text-align: center;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--body-bg);
+  }
+
+  .plan-item.active {
+    border-color: var(--bs-primary);
+    background: rgba(13, 110, 253, 0.05);
+  }
+
+  .plan-name {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .plan-limit {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  /* Device List */
+  .device-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .device-data-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: var(--body-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+  }
+
+  .device-name {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .device-stats-row {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+  }
+
+  .record-count {
+    color: var(--bs-primary);
+    font-weight: 500;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .storage-gauge-container {
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .gauge-wrapper {
+      flex: none;
+      width: 180px;
+    }
+    
+    .storage-stats {
+      width: 100%;
+    }
+    
+    .plans-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .device-data-item {
+      flex-direction: column;
+      gap: 0.75rem;
+      text-align: center;
+    }
+  }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Handle device deletion modal
+  const deleteDeviceModal = document.getElementById('deleteDeviceModal');
+  if (deleteDeviceModal) {
+    deleteDeviceModal.addEventListener('show.bs.modal', function(event) {
+      const button = event.relatedTarget;
+      const serial = button.getAttribute('data-device-serial');
+      const name = button.getAttribute('data-device-name');
+      const count = button.getAttribute('data-record-count');
+      
+      document.getElementById('modalDeviceSerial').value = serial;
+      document.getElementById('modalDeviceName').textContent = name;
+      document.getElementById('modalRecordCount').textContent = count;
+    });
+  }
+  
+  // Handle delete all confirmation
+  const confirmInput = document.getElementById('confirmInput');
+  const confirmBtn = document.getElementById('confirmDeleteAllBtn');
+  
+  if (confirmInput && confirmBtn) {
+    confirmInput.addEventListener('input', function() {
+      confirmBtn.disabled = this.value !== 'DELETE ALL MY DATA';
+    });
+  }
+});
+</script>
+{% endblock %}

@@ -35,7 +35,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 
 # Local application imports
-from .models import Device, DeviceApiKey, TelemetrySnapshot, DeviceAlertSettings
+from .models import Device, DeviceApiKey, TelemetrySnapshot, DeviceAlertSettings, UserStorageProfile, StoragePlan
 from .ratelimits import (
     ratelimit_login,
     ratelimit_register,
@@ -372,6 +372,169 @@ def user_settings(request):
             return redirect("user_settings")
     
     return render(request, "dashboard/settings.html", {"user": user})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def data_management(request):
+    """
+    Data management page for users to view storage usage and delete telemetry.
+    
+    GET: Display storage gauge and deletion options
+    POST: Handle data deletion requests
+    """
+    user = request.user
+    
+    # Get or create storage profile
+    try:
+        storage_profile = user.storage_profile
+    except UserStorageProfile.DoesNotExist:
+        storage_profile = UserStorageProfile.objects.create(user=user)
+    
+    # Get user's devices with telemetry counts
+    devices = Device.objects.filter(owner=user).order_by('name', 'serial_number')
+    
+    device_stats = []
+    for device in devices:
+        count = TelemetrySnapshot.objects.filter(device_id=device.serial_number).count()
+        
+        # Get date range
+        first_snapshot = TelemetrySnapshot.objects.filter(
+            device_id=device.serial_number
+        ).order_by('server_ts').first()
+        
+        last_snapshot = TelemetrySnapshot.objects.filter(
+            device_id=device.serial_number
+        ).order_by('-server_ts').first()
+        
+        device_stats.append({
+            'device': device,
+            'count': count,
+            'first_date': first_snapshot.server_ts if first_snapshot else None,
+            'last_date': last_snapshot.server_ts if last_snapshot else None,
+        })
+    
+    # Calculate total telemetry count
+    total_count = sum(d['count'] for d in device_stats)
+    
+    if request.method == "POST":
+        action = request.POST.get("action")
+        
+        if action == "refresh_usage":
+            # Recalculate storage usage
+            storage_profile.refresh_usage_cache()
+            messages.success(request, "Storage usage has been recalculated.")
+            return redirect("data_management")
+        
+        elif action == "delete_device_data":
+            device_serial = request.POST.get("device_serial")
+            
+            if device_serial:
+                # Verify device belongs to user
+                device = Device.objects.filter(
+                    owner=user, 
+                    serial_number=device_serial
+                ).first()
+                
+                if device:
+                    deleted_count, _ = TelemetrySnapshot.objects.filter(
+                        device_id=device_serial
+                    ).delete()
+                    
+                    # Refresh storage cache
+                    storage_profile.refresh_usage_cache()
+                    
+                    messages.success(
+                        request, 
+                        f"Deleted {deleted_count:,} telemetry records from {device.name or device.serial_number}."
+                    )
+                else:
+                    messages.error(request, "Device not found or access denied.")
+            
+            return redirect("data_management")
+        
+        elif action == "delete_date_range":
+            device_serial = request.POST.get("device_serial")
+            from_date = request.POST.get("from_date")
+            to_date = request.POST.get("to_date")
+            
+            if device_serial and from_date and to_date:
+                # Verify device belongs to user
+                device = Device.objects.filter(
+                    owner=user,
+                    serial_number=device_serial
+                ).first()
+                
+                if device:
+                    try:
+                        from_dt = parse_datetime(from_date + "T00:00:00Z")
+                        to_dt = parse_datetime(to_date + "T23:59:59Z")
+                        
+                        if from_dt and to_dt:
+                            deleted_count, _ = TelemetrySnapshot.objects.filter(
+                                device_id=device_serial,
+                                server_ts__gte=from_dt,
+                                server_ts__lte=to_dt
+                            ).delete()
+                            
+                            # Refresh storage cache
+                            storage_profile.refresh_usage_cache()
+                            
+                            messages.success(
+                                request,
+                                f"Deleted {deleted_count:,} telemetry records from {from_date} to {to_date}."
+                            )
+                        else:
+                            messages.error(request, "Invalid date format.")
+                    except Exception as e:
+                        messages.error(request, f"Error parsing dates: {e}")
+                else:
+                    messages.error(request, "Device not found or access denied.")
+            else:
+                messages.error(request, "Please provide device, from date, and to date.")
+            
+            return redirect("data_management")
+        
+        elif action == "delete_all_data":
+            # Delete ALL telemetry for ALL user's devices
+            confirm = request.POST.get("confirm_delete_all")
+            
+            if confirm == "DELETE ALL MY DATA":
+                device_serials = list(devices.values_list('serial_number', flat=True))
+                
+                deleted_count, _ = TelemetrySnapshot.objects.filter(
+                    device_id__in=device_serials
+                ).delete()
+                
+                # Refresh storage cache
+                storage_profile.refresh_usage_cache()
+                
+                messages.success(
+                    request,
+                    f"Deleted all {deleted_count:,} telemetry records from all devices."
+                )
+            else:
+                messages.error(
+                    request, 
+                    "Please type 'DELETE ALL MY DATA' to confirm deletion."
+                )
+            
+            return redirect("data_management")
+    
+    # Refresh usage cache if stale (older than 1 hour)
+    if (not storage_profile.usage_last_calculated or 
+        timezone.now() - storage_profile.usage_last_calculated > timedelta(hours=1)):
+        storage_profile.refresh_usage_cache()
+    
+    context = {
+        "user": user,
+        "storage_profile": storage_profile,
+        "device_stats": device_stats,
+        "total_count": total_count,
+        "plan_choices": StoragePlan.CHOICES,
+    }
+    
+    return render(request, "dashboard/data_management.html", context)
 
 
 # ---------------------------------------------------------------------------
@@ -956,6 +1119,24 @@ def ingest_telemetry(request):
     if error_response is not None:
         return error_response
 
+    # 1.5) Check storage quota before accepting telemetry
+    try:
+        storage_profile = device.owner.storage_profile
+    except UserStorageProfile.DoesNotExist:
+        # Create profile if it doesn't exist
+        storage_profile = UserStorageProfile.objects.create(user=device.owner)
+    
+    if storage_profile.is_storage_full:
+        return JsonResponse(
+            {
+                "status": "error",
+                "code": "STORAGE_LIMIT_EXCEEDED",
+                "message": f"Storage limit reached ({storage_profile.storage_limit_display}). "
+                           "Please delete old telemetry data or upgrade your plan.",
+            },
+            status=507,  # Insufficient Storage
+        )
+
     # 2) Parse JSON body
     try:
         body = request.body.decode("utf-8")
@@ -998,6 +1179,12 @@ def ingest_telemetry(request):
     # Update device.last_seen for dashboards
     device.last_seen = now()
     device.save(update_fields=["last_seen"])
+    
+    # Update cached storage usage (increment by estimated row size)
+    # Full recalculation happens periodically or on data management page
+    estimated_row_size = 300 + len(json.dumps(data)) if data else 400
+    storage_profile.cached_usage_bytes += estimated_row_size
+    storage_profile.save(update_fields=['cached_usage_bytes'])
     
     # Check temperature alerts and send emails if thresholds exceeded
     check_and_send_temperature_alerts(device, float(data["temp_inside_c"]))
