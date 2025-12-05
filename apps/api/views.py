@@ -23,6 +23,8 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.views import LoginView  # currently unused, kept for future
 
 # Django core framework imports
+from django.core.mail import send_mail
+from django.conf import settings
 from django.db.models import Count, Q
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -33,7 +35,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 
 # Local application imports
-from .models import Device, DeviceApiKey, TelemetrySnapshot
+from .models import Device, DeviceApiKey, TelemetrySnapshot, DeviceAlertSettings
 from .ratelimits import (
     ratelimit_login,
     ratelimit_register,
@@ -50,6 +52,93 @@ User = get_user_model()
 
 # How many samples to show in "Recent telemetry" views by default
 RECENT_TELEMETRY_LIMIT = 20
+
+
+# ---------------------------------------------------------------------------
+# Email Alert Functions
+# ---------------------------------------------------------------------------
+
+def check_and_send_temperature_alerts(device, temperature_c):
+    """
+    Check if the temperature exceeds alert thresholds and send email if needed.
+    Respects cooldown periods to avoid spamming.
+    """
+    try:
+        alert_settings = device.alert_settings
+    except DeviceAlertSettings.DoesNotExist:
+        return  # No alert settings configured
+    
+    if not alert_settings.alerts_enabled:
+        return  # Alerts disabled
+    
+    recipient = alert_settings.get_recipient_email()
+    if not recipient:
+        logger.warning("No recipient email for device %s alerts", device.serial_number)
+        return
+    
+    alerts_sent = []
+    
+    # Check high temperature alert
+    if (alert_settings.high_temp_enabled and 
+        temperature_c >= alert_settings.high_temp_threshold and
+        alert_settings.can_send_high_alert()):
+        
+        subject = f"🔴 High Temperature Alert - {device.name or device.serial_number}"
+        message = (
+            f"Temperature alert for your thermostat device.\n\n"
+            f"Device: {device.name or device.serial_number}\n"
+            f"Current Temperature: {temperature_c:.1f}°C\n"
+            f"High Threshold: {alert_settings.high_temp_threshold:.1f}°C\n\n"
+            f"The temperature has exceeded your configured high threshold.\n\n"
+            f"--\nThermostatRTOS Alert System"
+        )
+        
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[recipient],
+                fail_silently=False,
+            )
+            alert_settings.last_high_alert_sent = timezone.now()
+            alert_settings.save(update_fields=["last_high_alert_sent"])
+            alerts_sent.append("high")
+            logger.info("Sent high temp alert for device %s to %s", device.serial_number, recipient)
+        except Exception as e:
+            logger.error("Failed to send high temp alert for device %s: %s", device.serial_number, e)
+    
+    # Check low temperature alert
+    if (alert_settings.low_temp_enabled and 
+        temperature_c <= alert_settings.low_temp_threshold and
+        alert_settings.can_send_low_alert()):
+        
+        subject = f"🔵 Low Temperature Alert - {device.name or device.serial_number}"
+        message = (
+            f"Temperature alert for your thermostat device.\n\n"
+            f"Device: {device.name or device.serial_number}\n"
+            f"Current Temperature: {temperature_c:.1f}°C\n"
+            f"Low Threshold: {alert_settings.low_temp_threshold:.1f}°C\n\n"
+            f"The temperature has dropped below your configured low threshold.\n\n"
+            f"--\nThermostatRTOS Alert System"
+        )
+        
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[recipient],
+                fail_silently=False,
+            )
+            alert_settings.last_low_alert_sent = timezone.now()
+            alert_settings.save(update_fields=["last_low_alert_sent"])
+            alerts_sent.append("low")
+            logger.info("Sent low temp alert for device %s to %s", device.serial_number, recipient)
+        except Exception as e:
+            logger.error("Failed to send low temp alert for device %s: %s", device.serial_number, e)
+    
+    return alerts_sent
 
 
 # ---------------------------------------------------------------------------
@@ -441,14 +530,44 @@ def dashboard_device_detail(request, device_id: int):
             )
             return redirect("dashboard_devices")
 
+        elif action == "update_alerts":
+            # Get or create alert settings for this device
+            alert_settings, created = DeviceAlertSettings.objects.get_or_create(
+                device=device
+            )
+            
+            # Update settings from form
+            alert_settings.alerts_enabled = request.POST.get("alerts_enabled") == "on"
+            alert_settings.high_temp_enabled = request.POST.get("high_temp_enabled") == "on"
+            alert_settings.low_temp_enabled = request.POST.get("low_temp_enabled") == "on"
+            
+            try:
+                alert_settings.high_temp_threshold = float(request.POST.get("high_temp_threshold", 30))
+                alert_settings.low_temp_threshold = float(request.POST.get("low_temp_threshold", 10))
+                alert_settings.min_alert_interval_minutes = int(request.POST.get("alert_interval", 30))
+            except (ValueError, TypeError):
+                messages.error(request, "Invalid threshold values provided.")
+                return redirect("dashboard_device_detail", device_id=device.id)
+            
+            custom_email = request.POST.get("custom_email", "").strip()
+            alert_settings.custom_email = custom_email if custom_email else None
+            
+            alert_settings.save()
+            messages.success(request, "Email alert settings updated.")
+            return redirect("dashboard_device_detail", device_id=device.id)
+
     # GET (or fallthrough after POST handling) – show device info and telemetry
     snapshots = _recent_telemetry_qs_for_device(device)
     keys = device.api_keys.order_by("-created_at")
+    
+    # Get or create alert settings
+    alert_settings, _ = DeviceAlertSettings.objects.get_or_create(device=device)
 
     context = {
         "device": device,
         "snapshots": snapshots,
         "keys": keys,
+        "alert_settings": alert_settings,
     }
     return render(request, "dashboard/device_detail.html", context)
 
@@ -879,6 +998,9 @@ def ingest_telemetry(request):
     # Update device.last_seen for dashboards
     device.last_seen = now()
     device.save(update_fields=["last_seen"])
+    
+    # Check temperature alerts and send emails if thresholds exceeded
+    check_and_send_temperature_alerts(device, float(data["temp_inside_c"]))
 
     logger.info(
         "Ingested telemetry from device %s (snapshot id=%s)",

@@ -3,6 +3,204 @@
 
 {% block title %}Device detail{% endblock %}
 
+{% block extra_head %}
+<style>
+/* Email Alerts Dial Styles */
+.alert-master-toggle {
+  padding: 1rem;
+  background: var(--tp-bg-secondary);
+  border-radius: var(--tp-radius);
+  border: 1px solid var(--tp-border);
+}
+
+.alert-dials-container {
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.alert-dials-container.disabled {
+  opacity: 0.4;
+  filter: grayscale(0.5);
+  pointer-events: none;
+}
+
+.dial-card {
+  background: var(--tp-bg-secondary);
+  border-radius: var(--tp-radius-lg);
+  padding: 1.5rem;
+  border: 1px solid var(--tp-border);
+  transition: all 0.3s ease;
+}
+
+.dial-card:hover {
+  border-color: var(--tp-primary);
+  box-shadow: var(--tp-shadow-md);
+}
+
+.dial-card.disabled {
+  opacity: 0.5;
+}
+
+.dial-header {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.dial-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dial-container {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dial-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(0deg);
+}
+
+.dial-track {
+  stroke: var(--tp-border);
+  stroke-linecap: round;
+}
+
+.dial-progress {
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.1s ease;
+}
+
+.dial-progress.high {
+  stroke: url(#highGradient);
+}
+
+.dial-progress.low {
+  stroke: url(#lowGradient);
+}
+
+.dial-knob {
+  fill: var(--tp-card-bg);
+  stroke: var(--tp-border);
+  stroke-width: 2;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+  transition: transform 0.1s ease;
+}
+
+.dial-container:hover .dial-knob {
+  transform: scale(1.02);
+  transform-origin: center;
+}
+
+.dial-container:active .dial-knob {
+  transform: scale(0.98);
+  transform-origin: center;
+}
+
+.dial-value {
+  fill: var(--tp-text);
+  font-size: 28px;
+  font-weight: 700;
+  text-anchor: middle;
+  font-family: 'Inter', sans-serif;
+}
+
+.dial-unit {
+  fill: var(--tp-text-muted);
+  font-size: 14px;
+  text-anchor: middle;
+}
+
+.dial-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.dial-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0 0.5rem;
+}
+
+.dial-min, .dial-max {
+  font-size: 0.75rem;
+  color: var(--tp-text-muted);
+}
+
+.dial-label-text {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.alert-additional-settings {
+  padding: 1.5rem;
+  background: var(--tp-bg-secondary);
+  border-radius: var(--tp-radius);
+  border: 1px solid var(--tp-border);
+}
+
+/* High temp dial gradient */
+.high-temp .dial-card {
+  border-left: 3px solid #ef4444;
+}
+
+/* Low temp dial gradient */
+.low-temp .dial-card {
+  border-left: 3px solid #3b82f6;
+}
+
+/* Pulse animation for enabled alerts */
+@keyframes pulse-glow {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(14, 165, 233, 0.3)); }
+  50% { filter: drop-shadow(0 0 16px rgba(14, 165, 233, 0.5)); }
+}
+
+.dial-card.active .dial-svg {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dial-container {
+    width: 150px;
+    height: 150px;
+  }
+  
+  .dial-value {
+    font-size: 24px;
+  }
+}
+</style>
+
+<!-- SVG Gradients -->
+<svg width="0" height="0" style="position: absolute;">
+  <defs>
+    <linearGradient id="highGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#ef4444"/>
+    </linearGradient>
+    <linearGradient id="lowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#06b6d4"/>
+      <stop offset="100%" style="stop-color:#3b82f6"/>
+    </linearGradient>
+  </defs>
+</svg>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
   <h1 class="h3 mb-1">Device detail</h1>
@@ -395,6 +593,239 @@
           </div>
         </div>
       </div>
+
+      <!-- Email Alerts Section -->
+      <div class="card mt-4">
+        <div class="card-body">
+          <h5 class="card-title">
+            <i class="bi bi-bell me-2"></i>Email Alerts
+          </h5>
+          <p class="text-muted small">
+            Get notified when temperature exceeds your thresholds. Use the dials to set your preferred limits.
+          </p>
+
+          <form method="post" id="alertSettingsForm">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_alerts" />
+
+            <!-- Master Toggle -->
+            <div class="alert-master-toggle mb-4">
+              <div class="form-check form-switch">
+                <input 
+                  class="form-check-input" 
+                  type="checkbox" 
+                  id="alertsEnabled" 
+                  name="alerts_enabled"
+                  {% if alert_settings.alerts_enabled %}checked{% endif %}
+                >
+                <label class="form-check-label fw-semibold" for="alertsEnabled">
+                  Enable Email Notifications
+                </label>
+              </div>
+            </div>
+
+            <!-- Dials Container -->
+            <div class="alert-dials-container" id="alertDialsContainer">
+              <div class="row justify-content-center">
+                
+                <!-- High Temperature Dial -->
+                <div class="col-md-6 col-lg-5 mb-4">
+                  <div class="dial-card high-temp">
+                    <div class="dial-header">
+                      <div class="form-check form-switch">
+                        <input 
+                          class="form-check-input dial-toggle" 
+                          type="checkbox" 
+                          id="highTempEnabled" 
+                          name="high_temp_enabled"
+                          {% if alert_settings.high_temp_enabled %}checked{% endif %}
+                        >
+                        <label class="form-check-label" for="highTempEnabled">
+                          <i class="bi bi-thermometer-high text-danger me-1"></i>
+                          High Temperature Alert
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <div class="dial-wrapper">
+                      <div class="dial-container" id="highTempDial">
+                        <svg viewBox="0 0 200 200" class="dial-svg">
+                          <!-- Background arc -->
+                          <path 
+                            class="dial-track" 
+                            d="M 30 140 A 70 70 0 1 1 170 140"
+                            fill="none"
+                            stroke-width="12"
+                          />
+                          <!-- Active arc -->
+                          <path 
+                            class="dial-progress high" 
+                            d="M 30 140 A 70 70 0 1 1 170 140"
+                            fill="none"
+                            stroke-width="12"
+                            id="highTempProgress"
+                          />
+                          <!-- Dial knob -->
+                          <circle 
+                            class="dial-knob" 
+                            cx="100" 
+                            cy="100" 
+                            r="35"
+                          />
+                          <!-- Temperature value -->
+                          <text 
+                            x="100" 
+                            y="95" 
+                            class="dial-value" 
+                            id="highTempValue"
+                          >{{ alert_settings.high_temp_threshold|floatformat:1 }}</text>
+                          <text x="100" y="115" class="dial-unit">°C</text>
+                        </svg>
+                        
+                        <!-- Invisible range input for interaction -->
+                        <input 
+                          type="range" 
+                          class="dial-input" 
+                          id="highTempInput"
+                          name="high_temp_threshold"
+                          min="20" 
+                          max="50" 
+                          step="0.5"
+                          value="{{ alert_settings.high_temp_threshold }}"
+                        >
+                      </div>
+                      
+                      <div class="dial-labels">
+                        <span class="dial-min">20°C</span>
+                        <span class="dial-label-text text-danger">Alert if above</span>
+                        <span class="dial-max">50°C</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Low Temperature Dial -->
+                <div class="col-md-6 col-lg-5 mb-4">
+                  <div class="dial-card low-temp">
+                    <div class="dial-header">
+                      <div class="form-check form-switch">
+                        <input 
+                          class="form-check-input dial-toggle" 
+                          type="checkbox" 
+                          id="lowTempEnabled" 
+                          name="low_temp_enabled"
+                          {% if alert_settings.low_temp_enabled %}checked{% endif %}
+                        >
+                        <label class="form-check-label" for="lowTempEnabled">
+                          <i class="bi bi-thermometer-low text-info me-1"></i>
+                          Low Temperature Alert
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <div class="dial-wrapper">
+                      <div class="dial-container" id="lowTempDial">
+                        <svg viewBox="0 0 200 200" class="dial-svg">
+                          <!-- Background arc -->
+                          <path 
+                            class="dial-track" 
+                            d="M 30 140 A 70 70 0 1 1 170 140"
+                            fill="none"
+                            stroke-width="12"
+                          />
+                          <!-- Active arc -->
+                          <path 
+                            class="dial-progress low" 
+                            d="M 30 140 A 70 70 0 1 1 170 140"
+                            fill="none"
+                            stroke-width="12"
+                            id="lowTempProgress"
+                          />
+                          <!-- Dial knob -->
+                          <circle 
+                            class="dial-knob" 
+                            cx="100" 
+                            cy="100" 
+                            r="35"
+                          />
+                          <!-- Temperature value -->
+                          <text 
+                            x="100" 
+                            y="95" 
+                            class="dial-value" 
+                            id="lowTempValue"
+                          >{{ alert_settings.low_temp_threshold|floatformat:1 }}</text>
+                          <text x="100" y="115" class="dial-unit">°C</text>
+                        </svg>
+                        
+                        <!-- Invisible range input for interaction -->
+                        <input 
+                          type="range" 
+                          class="dial-input" 
+                          id="lowTempInput"
+                          name="low_temp_threshold"
+                          min="-10" 
+                          max="20" 
+                          step="0.5"
+                          value="{{ alert_settings.low_temp_threshold }}"
+                        >
+                      </div>
+                      
+                      <div class="dial-labels">
+                        <span class="dial-min">-10°C</span>
+                        <span class="dial-label-text text-info">Alert if below</span>
+                        <span class="dial-max">20°C</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Additional Settings -->
+              <div class="alert-additional-settings mt-3">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="alertInterval" class="form-label">
+                      <i class="bi bi-clock me-1"></i>Minimum time between alerts
+                    </label>
+                    <select class="form-select" id="alertInterval" name="alert_interval">
+                      <option value="15" {% if alert_settings.min_alert_interval_minutes == 15 %}selected{% endif %}>15 minutes</option>
+                      <option value="30" {% if alert_settings.min_alert_interval_minutes == 30 %}selected{% endif %}>30 minutes</option>
+                      <option value="60" {% if alert_settings.min_alert_interval_minutes == 60 %}selected{% endif %}>1 hour</option>
+                      <option value="120" {% if alert_settings.min_alert_interval_minutes == 120 %}selected{% endif %}>2 hours</option>
+                      <option value="360" {% if alert_settings.min_alert_interval_minutes == 360 %}selected{% endif %}>6 hours</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="customEmail" class="form-label">
+                      <i class="bi bi-envelope me-1"></i>Send alerts to (optional)
+                    </label>
+                    <input 
+                      type="email" 
+                      class="form-control" 
+                      id="customEmail" 
+                      name="custom_email"
+                      placeholder="Leave empty to use account email"
+                      value="{{ alert_settings.custom_email|default:'' }}"
+                    >
+                    <div class="form-text">
+                      Default: {{ request.user.email|default:"No email set on account" }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="mt-4">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg me-2"></i>Save Alert Settings
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
 
     <!-- Edit device tab -->
@@ -465,4 +896,173 @@
   {{ block.super }}
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="{% static 'api/js/device_detail.js' %}"></script>
+  
+  <script>
+  // Email Alert Dials Controller
+  (function() {
+    // Configuration for dials
+    const dialConfig = {
+      high: {
+        input: document.getElementById('highTempInput'),
+        value: document.getElementById('highTempValue'),
+        progress: document.getElementById('highTempProgress'),
+        toggle: document.getElementById('highTempEnabled'),
+        card: document.querySelector('.high-temp .dial-card') || document.querySelector('.high-temp'),
+        min: 20,
+        max: 50
+      },
+      low: {
+        input: document.getElementById('lowTempInput'),
+        value: document.getElementById('lowTempValue'),
+        progress: document.getElementById('lowTempProgress'),
+        toggle: document.getElementById('lowTempEnabled'),
+        card: document.querySelector('.low-temp .dial-card') || document.querySelector('.low-temp'),
+        min: -10,
+        max: 20
+      }
+    };
+
+    const masterToggle = document.getElementById('alertsEnabled');
+    const dialsContainer = document.getElementById('alertDialsContainer');
+
+    // Arc path length (approximate for 270 degree arc)
+    const arcLength = 330;
+
+    function updateDial(type) {
+      const config = dialConfig[type];
+      if (!config.input || !config.value || !config.progress) return;
+
+      const value = parseFloat(config.input.value);
+      const percentage = (value - config.min) / (config.max - config.min);
+      const dashOffset = arcLength * (1 - percentage);
+
+      // Update display value with animation
+      config.value.textContent = value.toFixed(1);
+
+      // Update arc progress
+      config.progress.style.strokeDasharray = arcLength;
+      config.progress.style.strokeDashoffset = dashOffset;
+
+      // Add active class if toggle is checked
+      if (config.toggle && config.card) {
+        if (config.toggle.checked) {
+          config.card.classList.add('active');
+          config.card.classList.remove('disabled');
+        } else {
+          config.card.classList.remove('active');
+          config.card.classList.add('disabled');
+        }
+      }
+    }
+
+    function initDial(type) {
+      const config = dialConfig[type];
+      if (!config.input) return;
+
+      // Initial update
+      updateDial(type);
+
+      // Input event listener
+      config.input.addEventListener('input', function() {
+        updateDial(type);
+      });
+
+      // Toggle listener
+      if (config.toggle) {
+        config.toggle.addEventListener('change', function() {
+          updateDial(type);
+        });
+      }
+
+      // Mouse wheel support
+      const container = config.input.closest('.dial-container');
+      if (container) {
+        container.addEventListener('wheel', function(e) {
+          e.preventDefault();
+          const step = parseFloat(config.input.step) || 0.5;
+          const delta = e.deltaY > 0 ? -step : step;
+          const newValue = Math.max(config.min, Math.min(config.max, parseFloat(config.input.value) + delta));
+          config.input.value = newValue;
+          updateDial(type);
+        });
+      }
+
+      // Drag support for touch devices
+      let isDragging = false;
+      let startY = 0;
+      let startValue = 0;
+
+      if (container) {
+        container.addEventListener('mousedown', function(e) {
+          if (e.target === config.input) return; // Let native input handle it
+          isDragging = true;
+          startY = e.clientY;
+          startValue = parseFloat(config.input.value);
+          container.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', function(e) {
+          if (!isDragging) return;
+          const delta = (startY - e.clientY) * 0.1;
+          const newValue = Math.max(config.min, Math.min(config.max, startValue + delta));
+          config.input.value = newValue;
+          updateDial(type);
+        });
+
+        document.addEventListener('mouseup', function() {
+          isDragging = false;
+          if (container) container.style.cursor = 'pointer';
+        });
+
+        // Touch support
+        container.addEventListener('touchstart', function(e) {
+          isDragging = true;
+          startY = e.touches[0].clientY;
+          startValue = parseFloat(config.input.value);
+        });
+
+        container.addEventListener('touchmove', function(e) {
+          if (!isDragging) return;
+          e.preventDefault();
+          const delta = (startY - e.touches[0].clientY) * 0.1;
+          const newValue = Math.max(config.min, Math.min(config.max, startValue + delta));
+          config.input.value = newValue;
+          updateDial(type);
+        });
+
+        container.addEventListener('touchend', function() {
+          isDragging = false;
+        });
+      }
+    }
+
+    // Master toggle functionality
+    function updateMasterToggle() {
+      if (!masterToggle || !dialsContainer) return;
+      
+      if (masterToggle.checked) {
+        dialsContainer.classList.remove('disabled');
+      } else {
+        dialsContainer.classList.add('disabled');
+      }
+    }
+
+    // Initialize on DOM ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+
+    function init() {
+      initDial('high');
+      initDial('low');
+      
+      if (masterToggle) {
+        masterToggle.addEventListener('change', updateMasterToggle);
+        updateMasterToggle();
+      }
+    }
+  })();
+  </script>
 {% endblock %}

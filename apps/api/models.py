@@ -123,3 +123,64 @@ class TelemetrySnapshot(models.Model):
     def __str__(self):
         return f"{self.device_id} @ {self.server_ts.isoformat()}"
 
+
+class DeviceAlertSettings(models.Model):
+    """
+    Stores email alert settings for a device.
+    Allows users to configure temperature thresholds for notifications.
+    """
+    device = models.OneToOneField(
+        Device,
+        on_delete=models.CASCADE,
+        related_name="alert_settings",
+    )
+    
+    # Email notifications toggle
+    alerts_enabled = models.BooleanField(default=False)
+    
+    # High temperature alert
+    high_temp_enabled = models.BooleanField(default=False)
+    high_temp_threshold = models.FloatField(default=30.0)  # °C
+    
+    # Low temperature alert
+    low_temp_enabled = models.BooleanField(default=False)
+    low_temp_threshold = models.FloatField(default=10.0)  # °C
+    
+    # Rate limiting - don't spam emails
+    min_alert_interval_minutes = models.IntegerField(default=30)
+    last_high_alert_sent = models.DateTimeField(null=True, blank=True)
+    last_low_alert_sent = models.DateTimeField(null=True, blank=True)
+    
+    # Email recipient (defaults to device owner's email)
+    custom_email = models.EmailField(blank=True, null=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Device Alert Settings"
+        verbose_name_plural = "Device Alert Settings"
+
+    def __str__(self):
+        return f"Alert settings for {self.device.serial_number}"
+    
+    def get_recipient_email(self):
+        """Returns the email to send alerts to."""
+        if self.custom_email:
+            return self.custom_email
+        return self.device.owner.email
+    
+    def can_send_high_alert(self):
+        """Check if enough time has passed since last high temp alert."""
+        if not self.last_high_alert_sent:
+            return True
+        elapsed = timezone.now() - self.last_high_alert_sent
+        return elapsed >= timedelta(minutes=self.min_alert_interval_minutes)
+    
+    def can_send_low_alert(self):
+        """Check if enough time has passed since last low temp alert."""
+        if not self.last_low_alert_sent:
+            return True
+        elapsed = timezone.now() - self.last_low_alert_sent
+        return elapsed >= timedelta(minutes=self.min_alert_interval_minutes)
+
