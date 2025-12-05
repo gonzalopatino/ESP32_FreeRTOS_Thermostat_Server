@@ -26,6 +26,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
   let tempChart = null;
   let rtTempChart = null;
+  
+  // Store offline indices for tooltip access
+  let tempChartOfflineIndices = new Set();
+  let rtChartOfflineIndices = new Set();
+
+  // =========================================================================
+  // OFFLINE DETECTION CONFIGURATION
+  // =========================================================================
+  // Device is considered offline if no data received for this many seconds
+  const OFFLINE_THRESHOLD_SECONDS = 120; // 2 minutes - adjust based on your sample rate
+  
+  // Colors for offline segments
+  const offlineColors = {
+    line: 'rgb(239, 68, 68)',       // Red
+    fill: 'rgba(239, 68, 68, 0.15)',
+    point: 'rgb(239, 68, 68)',
+  };
 
   // =========================================================================
   // MODERN COLOR PALETTE
@@ -70,8 +87,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const crosshairPlugin = {
     id: 'crosshair',
     afterDraw: (chart) => {
-      if (chart.tooltip._active && chart.tooltip._active.length) {
-        const activePoint = chart.tooltip._active[0];
+      const tooltip = chart.tooltip;
+      if (tooltip && tooltip._active && tooltip._active.length) {
+        const activePoint = tooltip._active[0];
         const ctx = chart.ctx;
         const x = activePoint.element.x;
         const topY = chart.scales.y.top;
@@ -97,7 +115,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // =========================================================================
   // TOOLTIP CONFIGURATION
   // =========================================================================
-  function createTooltipConfig() {
+  function createTooltipConfig(getOfflineIndices = null) {
     const colors = getChartColors();
     
     return {
@@ -139,6 +157,16 @@ document.addEventListener("DOMContentLoaded", function () {
             second: '2-digit'
           });
         },
+        afterTitle: function(tooltipItems) {
+          if (!tooltipItems.length || !getOfflineIndices) return '';
+          const offlineIndices = getOfflineIndices();
+          const idx = tooltipItems[0].dataIndex;
+          // Check if this point is at the start or end of an offline gap
+          if (offlineIndices.has(idx) || offlineIndices.has(idx - 1)) {
+            return '⚠️ Device was offline';
+          }
+          return '';
+        },
         label: function(context) {
           const label = context.dataset.label || '';
           const value = context.parsed.y;
@@ -160,6 +188,11 @@ document.addEventListener("DOMContentLoaded", function () {
     
     const colors = getChartColors();
     const isRealtime = options.realtime || false;
+    
+    // Get the appropriate offline indices getter based on chart type
+    const getOfflineIndices = isRealtime 
+      ? () => rtChartOfflineIndices 
+      : () => tempChartOfflineIndices;
 
     return new Chart(ctx, {
       type: 'line',
@@ -182,6 +215,7 @@ document.addEventListener("DOMContentLoaded", function () {
             tension: 0.4,
             fill: true,
             order: 3,
+            segment: {}, // Will be populated with offline styling
           },
           {
             label: 'Outside Temp',
@@ -199,6 +233,7 @@ document.addEventListener("DOMContentLoaded", function () {
             tension: 0.4,
             fill: true,
             order: 2,
+            segment: {}, // Will be populated with offline styling
           },
           {
             label: 'Setpoint',
@@ -280,7 +315,7 @@ document.addEventListener("DOMContentLoaded", function () {
               boxHeight: 8,
             }
           },
-          tooltip: createTooltipConfig(),
+          tooltip: createTooltipConfig(getOfflineIndices),
         },
 
         // Scales configuration
@@ -468,6 +503,109 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // =========================================================================
+  // OFFLINE DETECTION - Detect gaps in telemetry data
+  // =========================================================================
+  
+  /**
+   * Analyzes timestamps and returns a Set of indices where offline gaps occur.
+   * A gap is detected when the time between consecutive samples exceeds the threshold.
+   * @param {string[]} labels - Array of ISO timestamp strings
+   * @returns {Set<number>} - Set of indices that START an offline period
+   */
+  function detectOfflineSegments(labels) {
+    const offlineIndices = new Set();
+    
+    if (labels.length < 2) {
+      console.log('detectOfflineSegments: Not enough labels (<2)');
+      return offlineIndices;
+    }
+    
+    console.log(`detectOfflineSegments: Analyzing ${labels.length} timestamps, threshold=${OFFLINE_THRESHOLD_SECONDS}s`);
+    console.log(`First timestamp: ${labels[0]}, Last: ${labels[labels.length-1]}`);
+    
+    for (let i = 1; i < labels.length; i++) {
+      const prevTime = new Date(labels[i - 1]).getTime();
+      const currTime = new Date(labels[i]).getTime();
+      
+      if (isNaN(prevTime) || isNaN(currTime)) {
+        console.warn(`Invalid timestamp at index ${i}: prev="${labels[i-1]}", curr="${labels[i]}"`);
+        continue;
+      }
+      
+      const gapSeconds = (currTime - prevTime) / 1000;
+      
+      // If gap exceeds threshold, mark this segment as offline
+      if (gapSeconds > OFFLINE_THRESHOLD_SECONDS) {
+        offlineIndices.add(i - 1); // The segment FROM index i-1 TO i is offline
+        console.log(`Offline gap detected: ${gapSeconds.toFixed(0)}s between index ${i-1} and ${i}`);
+        console.log(`  From: ${labels[i-1]} To: ${labels[i]}`);
+      }
+    }
+    
+    console.log(`detectOfflineSegments: Found ${offlineIndices.size} offline period(s)`);
+    return offlineIndices;
+  }
+
+  /**
+   * Creates a segment style function for Chart.js that colors offline segments red
+   * @param {Set<number>} offlineIndices - Set of indices where offline periods start
+   * @param {string} normalColor - Normal line color
+   * @returns {function} - Segment style function for Chart.js
+   */
+  function createSegmentStyle(offlineIndices, normalColor) {
+    // Capture the Set by value at the time of function creation
+    const indices = new Set(offlineIndices);
+    console.log(`createSegmentStyle called with ${indices.size} offline indices`);
+    
+    return function(ctx) {
+      // ctx.p0DataIndex is the index of the starting point of the segment
+      const idx = ctx.p0DataIndex;
+      if (indices.has(idx)) {
+        return offlineColors.line;
+      }
+      return undefined; // Use default color
+    };
+  }
+
+  /**
+   * Creates segment background color function
+   */
+  function createSegmentBgStyle(offlineIndices, normalColor) {
+    // Capture the Set by value at the time of function creation
+    const indices = new Set(offlineIndices);
+    console.log(`createSegmentBgStyle called with ${indices.size} offline indices`);
+    
+    return function(ctx) {
+      const idx = ctx.p0DataIndex;
+      if (indices.has(idx)) {
+        return offlineColors.fill;
+      }
+      return undefined; // Use default
+    };
+  }
+
+  /**
+   * Creates point background color array based on offline status
+   * @param {string[]} labels - Array of ISO timestamp strings
+   * @param {Set<number>} offlineIndices - Set of indices where offline periods start
+   * @param {string} normalColor - Normal point color
+   * @returns {string[]} - Array of colors for each point
+   */
+  function createPointColors(labels, offlineIndices, normalColor) {
+    const colors = [];
+    for (let i = 0; i < labels.length; i++) {
+      // Point is "offline" if it's at the end of an offline gap
+      // or at the start of an offline gap
+      if (offlineIndices.has(i) || offlineIndices.has(i - 1)) {
+        colors.push(offlineColors.point);
+      } else {
+        colors.push(normalColor);
+      }
+    }
+    return colors;
+  }
+
+  // =========================================================================
   // DATA LOADING - HISTORY CHART
   // =========================================================================
   async function loadTelemetry(useDefaultRange = false) {
@@ -522,12 +660,49 @@ document.addEventListener("DOMContentLoaded", function () {
     const tout = data.map((s) => s.temp_outside_c);
     const sp = data.map((s) => s.setpoint_c);
 
+    // Detect offline segments and store for tooltip access
+    tempChartOfflineIndices = detectOfflineSegments(labels);
+    
     if (tempChart) {
       tempChart.data.labels = labels;
       tempChart.data.datasets[0].data = tin;
       tempChart.data.datasets[1].data = tout;
       tempChart.data.datasets[2].data = sp;
+      
+      // Apply segment styling for offline detection
+      tempChart.data.datasets[0].segment = {
+        borderColor: createSegmentStyle(tempChartOfflineIndices, chartPalette.inside.line),
+        backgroundColor: createSegmentBgStyle(tempChartOfflineIndices, chartPalette.inside.fill),
+      };
+      tempChart.data.datasets[0].pointBackgroundColor = createPointColors(labels, tempChartOfflineIndices, chartPalette.inside.point);
+      
+      tempChart.data.datasets[1].segment = {
+        borderColor: createSegmentStyle(tempChartOfflineIndices, chartPalette.outside.line),
+        backgroundColor: createSegmentBgStyle(tempChartOfflineIndices, chartPalette.outside.fill),
+      };
+      tempChart.data.datasets[1].pointBackgroundColor = createPointColors(labels, tempChartOfflineIndices, chartPalette.outside.point);
+      
+      // Setpoint doesn't need offline coloring as it's a configuration, not a measurement
+      
       tempChart.update('default');
+      
+      // Update offline indicator badge and legend hint
+      const historyOfflineIndicator = document.getElementById('historyOfflineIndicator');
+      const historyLegendHint = document.getElementById('historyChartLegendHint');
+      
+      if (tempChartOfflineIndices.size > 0) {
+        if (historyOfflineIndicator) {
+          historyOfflineIndicator.classList.remove('d-none');
+          historyOfflineIndicator.innerHTML = `<i class="bi bi-wifi-off me-1"></i>${tempChartOfflineIndices.size} offline period${tempChartOfflineIndices.size > 1 ? 's' : ''}`;
+        }
+        if (historyLegendHint) {
+          historyLegendHint.classList.remove('d-none');
+        }
+        console.log(`History chart: Detected ${tempChartOfflineIndices.size} offline period(s)`);
+      } else {
+        if (historyOfflineIndicator) historyOfflineIndicator.classList.add('d-none');
+        if (historyLegendHint) historyLegendHint.classList.add('d-none');
+      }
     }
 
     const countSpan = document.getElementById("samplesCount");
@@ -590,6 +765,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!data.length) {
       rtTempChart.data.labels = [];
       rtTempChart.data.datasets.forEach((ds) => (ds.data = []));
+      rtChartOfflineIndices = new Set();
       rtTempChart.update('none');
       return;
     }
@@ -599,11 +775,46 @@ document.addEventListener("DOMContentLoaded", function () {
     const tout = data.map((s) => s.temp_outside_c);
     const sp = data.map((s) => s.setpoint_c);
 
+    // Detect offline segments and store for tooltip access
+    rtChartOfflineIndices = detectOfflineSegments(labels);
+
     rtTempChart.data.labels = labels;
     rtTempChart.data.datasets[0].data = tin;
     rtTempChart.data.datasets[1].data = tout;
     rtTempChart.data.datasets[2].data = sp;
+    
+    // Apply segment styling for offline detection
+    rtTempChart.data.datasets[0].segment = {
+      borderColor: createSegmentStyle(rtChartOfflineIndices, chartPalette.inside.line),
+      backgroundColor: createSegmentBgStyle(rtChartOfflineIndices, chartPalette.inside.fill),
+    };
+    rtTempChart.data.datasets[0].pointBackgroundColor = createPointColors(labels, rtChartOfflineIndices, chartPalette.inside.point);
+    
+    rtTempChart.data.datasets[1].segment = {
+      borderColor: createSegmentStyle(rtChartOfflineIndices, chartPalette.outside.line),
+      backgroundColor: createSegmentBgStyle(rtChartOfflineIndices, chartPalette.outside.fill),
+    };
+    rtTempChart.data.datasets[1].pointBackgroundColor = createPointColors(labels, rtChartOfflineIndices, chartPalette.outside.point);
+    
     rtTempChart.update('default');
+    
+    // Update offline indicator badge and legend hint
+    const rtOfflineIndicator = document.getElementById('rtOfflineIndicator');
+    const rtLegendHint = document.getElementById('rtChartLegendHint');
+    
+    if (rtChartOfflineIndices.size > 0) {
+      if (rtOfflineIndicator) {
+        rtOfflineIndicator.classList.remove('d-none');
+        rtOfflineIndicator.innerHTML = `<i class="bi bi-wifi-off me-1"></i>${rtChartOfflineIndices.size} offline period${rtChartOfflineIndices.size > 1 ? 's' : ''}`;
+      }
+      if (rtLegendHint) {
+        rtLegendHint.classList.remove('d-none');
+      }
+      console.log(`Realtime chart: Detected ${rtChartOfflineIndices.size} offline period(s)`);
+    } else {
+      if (rtOfflineIndicator) rtOfflineIndicator.classList.add('d-none');
+      if (rtLegendHint) rtLegendHint.classList.add('d-none');
+    }
   }
 
   // =========================================================================

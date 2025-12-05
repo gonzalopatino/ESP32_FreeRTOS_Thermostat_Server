@@ -696,6 +696,29 @@ a:hover {
   background-color: rgba(148, 163, 184, 0.15) !important;
 }
 
+/* Danger badge for offline indicators */
+.bg-danger-subtle {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+.text-danger {
+  color: rgb(239, 68, 68) !important;
+}
+
+[data-theme="dark"] .bg-danger-subtle {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Chart legend hint styling */
+.chart-legend-hint {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.chart-legend-hint:hover {
+  opacity: 1;
+}
+
 /* --------------------------------------------------------------------------
    Loading States
    -------------------------------------------------------------------------- */
