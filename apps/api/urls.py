@@ -14,7 +14,6 @@ urlpatterns = [
     path("devices/register/", views.register_device, name="register-device"),
     path("devices/", views.list_devices, name="list_devices"),
 
-
     #Device Key Management
     path("devices/<int:device_id>/keys/",views.list_device_keys, name="list_device_keys",),
     path("devices/<int:device_id>/keys/<int:key_id>/revoke/",views.revoke_device_key,name="revoke_device_key",),
@@ -33,7 +32,5 @@ urlpatterns = [
         views.dashboard_devices,
         name="dashboard_devices",
     ),
-
-    
 ]
 

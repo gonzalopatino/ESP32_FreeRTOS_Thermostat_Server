@@ -1,0 +1,249 @@
+/* ==========================================================================
+   ThermoPatinoVerse - Centralized Theme
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   CSS Custom Properties (Variables) - Easy to customize
+   -------------------------------------------------------------------------- */
+:root {
+  /* Primary brand colors */
+  --tp-primary: #2d3748;          /* Dark slate - matches navbar */
+  --tp-primary-hover: #1a202c;    /* Darker on hover */
+  --tp-primary-light: #4a5568;    /* Lighter variant */
+  
+  /* Accent colors */
+  --tp-accent: #38a169;           /* Green - for success/positive actions */
+  --tp-accent-hover: #2f855a;
+  
+  /* Neutral colors */
+  --tp-bg: #f4f4f6;               /* Page background */
+  --tp-card-bg: #ffffff;          /* Card/form backgrounds */
+  --tp-border: #e2e8f0;           /* Subtle borders */
+  
+  /* Text colors */
+  --tp-text: #2d3748;             /* Primary text */
+  --tp-text-muted: #718096;       /* Secondary/muted text */
+  --tp-text-light: #a0aec0;       /* Light text */
+  
+  /* Status colors */
+  --tp-success: #38a169;
+  --tp-danger: #e53e3e;
+  --tp-warning: #dd6b20;
+  --tp-info: #3182ce;
+  
+  /* Spacing */
+  --tp-radius: 8px;               /* Border radius */
+  --tp-radius-lg: 12px;           /* Larger radius for cards */
+  
+  /* Shadows */
+  --tp-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --tp-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --tp-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* --------------------------------------------------------------------------
+   Base Styles
+   -------------------------------------------------------------------------- */
+body {
+  background-color: var(--tp-bg);
+  color: var(--tp-text);
+}
+
+/* --------------------------------------------------------------------------
+   Buttons - Override Bootstrap blue with theme colors
+   -------------------------------------------------------------------------- */
+.btn-primary {
+  background-color: var(--tp-primary);
+  border-color: var(--tp-primary);
+  color: #ffffff;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--tp-primary-hover);
+  border-color: var(--tp-primary-hover);
+  color: #ffffff;
+}
+
+.btn-primary:active,
+.btn-primary:active:focus {
+  background-color: var(--tp-primary-hover);
+  border-color: var(--tp-primary-hover);
+}
+
+.btn-outline-primary {
+  color: var(--tp-primary);
+  border-color: var(--tp-primary);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--tp-primary);
+  border-color: var(--tp-primary);
+  color: #ffffff;
+}
+
+/* Success button (green accent) */
+.btn-success {
+  background-color: var(--tp-accent);
+  border-color: var(--tp-accent);
+}
+
+.btn-success:hover {
+  background-color: var(--tp-accent-hover);
+  border-color: var(--tp-accent-hover);
+}
+
+/* --------------------------------------------------------------------------
+   Forms
+   -------------------------------------------------------------------------- */
+.form-control:focus {
+  border-color: var(--tp-primary);
+  box-shadow: 0 0 0 0.2rem rgba(45, 55, 72, 0.15);
+}
+
+.form-label {
+  color: var(--tp-text);
+  font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   Cards
+   -------------------------------------------------------------------------- */
+.card {
+  background-color: var(--tp-card-bg);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-lg);
+  box-shadow: var(--tp-shadow);
+}
+
+.card-header {
+  background-color: var(--tp-bg);
+  border-bottom: 1px solid var(--tp-border);
+}
+
+/* --------------------------------------------------------------------------
+   Auth Pages (Login, Register) - Centered card style
+   -------------------------------------------------------------------------- */
+.auth-container {
+  min-height: calc(100vh - 100px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-card {
+  background: var(--tp-card-bg);
+  border-radius: var(--tp-radius-lg);
+  box-shadow: var(--tp-shadow-lg);
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth-card .auth-logo {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.auth-card .auth-logo img {
+  height: 60px;
+  width: auto;
+}
+
+.auth-card .auth-title {
+  text-align: center;
+  font-weight: 700;
+  color: var(--tp-text);
+  margin-bottom: 1.5rem;
+}
+
+.auth-card .auth-footer {
+  text-align: center;
+  margin-top: 1.5rem;
+  color: var(--tp-text-muted);
+}
+
+.auth-card .auth-footer a {
+  color: var(--tp-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.auth-card .auth-footer a:hover {
+  text-decoration: underline;
+}
+
+/* --------------------------------------------------------------------------
+   Links
+   -------------------------------------------------------------------------- */
+a {
+  color: var(--tp-primary);
+}
+
+a:hover {
+  color: var(--tp-primary-hover);
+}
+
+/* --------------------------------------------------------------------------
+   Tables
+   -------------------------------------------------------------------------- */
+.table {
+  background-color: var(--tp-card-bg);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) {
+  background-color: rgba(45, 55, 72, 0.03);
+}
+
+.table-hover > tbody > tr:hover {
+  background-color: rgba(45, 55, 72, 0.06);
+}
+
+/* --------------------------------------------------------------------------
+   Alerts - Match theme
+   -------------------------------------------------------------------------- */
+.alert-success {
+  background-color: rgba(56, 161, 105, 0.1);
+  border-color: var(--tp-success);
+  color: var(--tp-success);
+}
+
+.alert-danger {
+  background-color: rgba(229, 62, 62, 0.1);
+  border-color: var(--tp-danger);
+  color: var(--tp-danger);
+}
+
+.alert-warning {
+  background-color: rgba(221, 107, 32, 0.1);
+  border-color: var(--tp-warning);
+  color: var(--tp-warning);
+}
+
+.alert-info {
+  background-color: rgba(49, 130, 206, 0.1);
+  border-color: var(--tp-info);
+  color: var(--tp-info);
+}
+
+/* --------------------------------------------------------------------------
+   Navbar customizations
+   -------------------------------------------------------------------------- */
+.navbar-dark .navbar-brand {
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   Utility classes
+   -------------------------------------------------------------------------- */
+.text-primary {
+  color: var(--tp-primary) !important;
+}
+
+.bg-primary {
+  background-color: var(--tp-primary) !important;
+}
+
+.border-primary {
+  border-color: var(--tp-primary) !important;
+}

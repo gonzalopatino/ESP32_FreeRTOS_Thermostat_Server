@@ -41,6 +41,7 @@ from .ratelimits import (
     ratelimit_key_rotation,
     ratelimited_error,
 )
+from apps.api.signing import decode_serial, encode_serial
 
 
 logger = logging.getLogger(__name__)
