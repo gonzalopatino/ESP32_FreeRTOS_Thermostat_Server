@@ -1,172 +1,505 @@
 /* ==========================================================================
-   ThermoPatinoVerse - Centralized Theme
+   ThermoPatinoVerse - Modern IoT Dashboard Theme
+   Professional dark/light mode with smooth transitions
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   CSS Custom Properties (Variables) - Easy to customize
+   CSS Custom Properties - Light Mode (Default)
    -------------------------------------------------------------------------- */
 :root {
-  /* Primary brand colors */
-  --tp-primary: #2d3748;          /* Dark slate - matches navbar */
-  --tp-primary-hover: #1a202c;    /* Darker on hover */
-  --tp-primary-light: #4a5568;    /* Lighter variant */
+  /* Primary brand colors - Modern teal/cyan IoT feel */
+  --tp-primary: #0ea5e9;          /* Sky blue - modern IoT */
+  --tp-primary-hover: #0284c7;
+  --tp-primary-light: #38bdf8;
+  --tp-primary-rgb: 14, 165, 233;
   
-  /* Accent colors */
-  --tp-accent: #38a169;           /* Green - for success/positive actions */
-  --tp-accent-hover: #2f855a;
+  /* Secondary accent */
+  --tp-secondary: #6366f1;        /* Indigo */
+  --tp-secondary-hover: #4f46e5;
   
-  /* Neutral colors */
-  --tp-bg: #f4f4f6;               /* Page background */
-  --tp-card-bg: #ffffff;          /* Card/form backgrounds */
-  --tp-border: #e2e8f0;           /* Subtle borders */
+  /* Success/accent green */
+  --tp-accent: #10b981;           /* Emerald green */
+  --tp-accent-hover: #059669;
   
-  /* Text colors */
-  --tp-text: #2d3748;             /* Primary text */
-  --tp-text-muted: #718096;       /* Secondary/muted text */
-  --tp-text-light: #a0aec0;       /* Light text */
+  /* Backgrounds */
+  --tp-bg: #f8fafc;               /* Very light gray */
+  --tp-bg-secondary: #f1f5f9;     /* Slightly darker */
+  --tp-card-bg: #ffffff;
+  --tp-card-bg-hover: #f8fafc;
+  
+  /* Borders */
+  --tp-border: #e2e8f0;
+  --tp-border-light: #f1f5f9;
+  
+  /* Text */
+  --tp-text: #0f172a;             /* Slate 900 */
+  --tp-text-secondary: #475569;   /* Slate 600 */
+  --tp-text-muted: #94a3b8;       /* Slate 400 */
+  --tp-text-inverse: #ffffff;
+  
+  /* Navbar */
+  --tp-navbar-bg: #0f172a;        /* Dark slate */
+  --tp-navbar-text: #e2e8f0;
   
   /* Status colors */
-  --tp-success: #38a169;
-  --tp-danger: #e53e3e;
-  --tp-warning: #dd6b20;
-  --tp-info: #3182ce;
+  --tp-success: #10b981;
+  --tp-success-bg: rgba(16, 185, 129, 0.1);
+  --tp-danger: #ef4444;
+  --tp-danger-bg: rgba(239, 68, 68, 0.1);
+  --tp-warning: #f59e0b;
+  --tp-warning-bg: rgba(245, 158, 11, 0.1);
+  --tp-info: #3b82f6;
+  --tp-info-bg: rgba(59, 130, 246, 0.1);
   
-  /* Spacing */
-  --tp-radius: 8px;               /* Border radius */
-  --tp-radius-lg: 12px;           /* Larger radius for cards */
+  /* Gradients */
+  --tp-gradient-primary: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+  --tp-gradient-accent: linear-gradient(135deg, #10b981 0%, #0ea5e9 100%);
+  --tp-gradient-dark: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
   
-  /* Shadows */
-  --tp-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --tp-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --tp-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  /* Spacing & Radius */
+  --tp-radius-sm: 6px;
+  --tp-radius: 10px;
+  --tp-radius-lg: 16px;
+  --tp-radius-xl: 24px;
+  
+  /* Shadows - Light mode */
+  --tp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --tp-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --tp-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  --tp-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
+  --tp-shadow-glow: 0 0 20px rgba(14, 165, 233, 0.15);
+  
+  /* Transitions */
+  --tp-transition: all 0.2s ease;
+  --tp-transition-slow: all 0.3s ease;
+}
+
+/* --------------------------------------------------------------------------
+   Dark Mode
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  --tp-bg: #0f172a;               /* Slate 900 */
+  --tp-bg-secondary: #1e293b;     /* Slate 800 */
+  --tp-card-bg: #1e293b;
+  --tp-card-bg-hover: #334155;
+  
+  --tp-border: #334155;           /* Slate 700 */
+  --tp-border-light: #1e293b;
+  
+  --tp-text: #f1f5f9;             /* Slate 100 */
+  --tp-text-secondary: #cbd5e1;   /* Slate 300 */
+  --tp-text-muted: #64748b;       /* Slate 500 */
+  
+  --tp-navbar-bg: #020617;        /* Slate 950 */
+  
+  /* Darker shadows for dark mode */
+  --tp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --tp-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --tp-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --tp-shadow-glow: 0 0 30px rgba(14, 165, 233, 0.2);
 }
 
 /* --------------------------------------------------------------------------
    Base Styles
    -------------------------------------------------------------------------- */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
 body {
   background-color: var(--tp-bg);
   color: var(--tp-text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
 }
 
 /* --------------------------------------------------------------------------
-   Buttons - Override Bootstrap blue with theme colors
+   Theme Toggle Button
    -------------------------------------------------------------------------- */
-.btn-primary {
-  background-color: var(--tp-primary);
+.theme-toggle {
+  background: transparent;
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius);
+  padding: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  transition: var(--tp-transition);
+}
+
+.theme-toggle:hover {
+  background: var(--tp-bg-secondary);
   border-color: var(--tp-primary);
+}
+
+.theme-toggle .icon-sun,
+.theme-toggle .icon-moon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Show/hide icons based on theme */
+.theme-toggle .icon-moon { display: block; color: var(--tp-text-secondary); }
+.theme-toggle .icon-sun { display: none; }
+
+[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+[data-theme="dark"] .theme-toggle .icon-sun { display: block; color: #fbbf24; }
+
+/* --------------------------------------------------------------------------
+   Navbar - Modern Glass Effect
+   -------------------------------------------------------------------------- */
+.navbar {
+  background: var(--tp-navbar-bg) !important;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0.75rem 0;
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: -0.025em;
+}
+
+.navbar-brand img {
+  height: 40px;
+  width: auto;
+  margin-right: 12px;
+  filter: drop-shadow(0 0 8px rgba(14, 165, 233, 0.3));
+}
+
+.navbar-dark .nav-link {
+  color: var(--tp-navbar-text) !important;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: var(--tp-radius);
+  transition: var(--tp-transition);
+}
+
+.navbar-dark .nav-link:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.navbar-dark .nav-link.active {
+  color: #ffffff !important;
+  background: var(--tp-primary);
+}
+
+/* --------------------------------------------------------------------------
+   Buttons - Modern with Gradients
+   -------------------------------------------------------------------------- */
+.btn {
+  font-weight: 500;
+  border-radius: var(--tp-radius);
+  padding: 0.625rem 1.25rem;
+  transition: var(--tp-transition);
+  border: none;
+}
+
+.btn-primary {
+  background: var(--tp-gradient-primary);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(var(--tp-primary-rgb), 0.25);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(var(--tp-primary-rgb), 0.35);
+  background: var(--tp-gradient-primary);
   color: #ffffff;
 }
 
-.btn-primary:hover,
-.btn-primary:focus {
-  background-color: var(--tp-primary-hover);
-  border-color: var(--tp-primary-hover);
-  color: #ffffff;
-}
-
-.btn-primary:active,
-.btn-primary:active:focus {
-  background-color: var(--tp-primary-hover);
-  border-color: var(--tp-primary-hover);
+.btn-primary:active {
+  transform: translateY(0);
 }
 
 .btn-outline-primary {
   color: var(--tp-primary);
-  border-color: var(--tp-primary);
+  border: 2px solid var(--tp-primary);
+  background: transparent;
 }
 
 .btn-outline-primary:hover {
-  background-color: var(--tp-primary);
-  border-color: var(--tp-primary);
+  background: var(--tp-primary);
   color: #ffffff;
 }
 
-/* Success button (green accent) */
 .btn-success {
-  background-color: var(--tp-accent);
-  border-color: var(--tp-accent);
+  background: var(--tp-gradient-accent);
+  border: none;
+  color: #ffffff;
 }
 
-.btn-success:hover {
-  background-color: var(--tp-accent-hover);
-  border-color: var(--tp-accent-hover);
+.btn-danger {
+  background: var(--tp-danger);
+  border: none;
+}
+
+.btn-outline-light {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.btn-outline-light:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
 }
 
 /* --------------------------------------------------------------------------
-   Forms
+   Cards - Modern IoT Style
    -------------------------------------------------------------------------- */
-.form-control:focus {
+.card {
+  background: var(--tp-card-bg);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-lg);
+  box-shadow: var(--tp-shadow);
+  transition: var(--tp-transition);
+  overflow: hidden;
+}
+
+.card:hover {
+  box-shadow: var(--tp-shadow-lg);
   border-color: var(--tp-primary);
-  box-shadow: 0 0 0 0.2rem rgba(45, 55, 72, 0.15);
+}
+
+.card-header {
+  background: var(--tp-bg-secondary);
+  border-bottom: 1px solid var(--tp-border);
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* Stat cards for dashboard */
+.stat-card {
+  background: var(--tp-card-bg);
+  border-radius: var(--tp-radius-lg);
+  padding: 1.5rem;
+  border: 1px solid var(--tp-border);
+  transition: var(--tp-transition);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--tp-shadow-lg);
+}
+
+.stat-card .stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--tp-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.stat-card .stat-icon.primary {
+  background: rgba(var(--tp-primary-rgb), 0.1);
+  color: var(--tp-primary);
+}
+
+.stat-card .stat-icon.success {
+  background: var(--tp-success-bg);
+  color: var(--tp-success);
+}
+
+.stat-card .stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--tp-text);
+  line-height: 1.2;
+}
+
+.stat-card .stat-label {
+  color: var(--tp-text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* --------------------------------------------------------------------------
+   Forms - Clean Modern Style
+   -------------------------------------------------------------------------- */
+.form-control {
+  background: var(--tp-card-bg);
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius);
+  padding: 0.75rem 1rem;
+  color: var(--tp-text);
+  transition: var(--tp-transition);
+}
+
+.form-control:focus {
+  background: var(--tp-card-bg);
+  border-color: var(--tp-primary);
+  box-shadow: 0 0 0 3px rgba(var(--tp-primary-rgb), 0.1);
+  color: var(--tp-text);
+}
+
+.form-control::placeholder {
+  color: var(--tp-text-muted);
 }
 
 .form-label {
   color: var(--tp-text);
   font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.form-text, small.text-muted {
+  color: var(--tp-text-muted) !important;
 }
 
 /* --------------------------------------------------------------------------
-   Cards
+   Tables - Professional Data Display
    -------------------------------------------------------------------------- */
-.card {
-  background-color: var(--tp-card-bg);
-  border: 1px solid var(--tp-border);
+.table {
+  background: var(--tp-card-bg);
   border-radius: var(--tp-radius-lg);
-  box-shadow: var(--tp-shadow);
+  overflow: hidden;
+  margin-bottom: 0;
+  --bs-table-bg: var(--tp-card-bg);
+  --bs-table-color: var(--tp-text);
+  --bs-table-striped-bg: var(--tp-bg-secondary);
+  --bs-table-striped-color: var(--tp-text);
+  --bs-table-hover-bg: var(--tp-card-bg-hover);
+  --bs-table-hover-color: var(--tp-text);
 }
 
-.card-header {
-  background-color: var(--tp-bg);
+.table th {
+  background: var(--tp-bg-secondary) !important;
+  color: var(--tp-text-secondary) !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--tp-border);
 }
 
+/* Override Bootstrap table-light in dark mode */
+.table-light {
+  --bs-table-bg: var(--tp-bg-secondary);
+  --bs-table-color: var(--tp-text-secondary);
+}
+
+.table thead.table-light th {
+  background: var(--tp-bg-secondary) !important;
+  color: var(--tp-text-secondary) !important;
+}
+
+.table td {
+  padding: 1rem 1.25rem;
+  color: var(--tp-text);
+  background: var(--tp-card-bg);
+  border-bottom: 1px solid var(--tp-border-light);
+  vertical-align: middle;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > td {
+  background: var(--tp-bg-secondary);
+  color: var(--tp-text);
+}
+
+.table tbody tr {
+  transition: var(--tp-transition);
+}
+
+.table tbody tr:hover {
+  background: var(--tp-card-bg-hover);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table-responsive {
+  border-radius: var(--tp-radius-lg);
+  border: 1px solid var(--tp-border);
+  overflow: hidden;
+}
+
 /* --------------------------------------------------------------------------
-   Auth Pages (Login, Register) - Centered card style
+   Auth Pages - Premium Feel
    -------------------------------------------------------------------------- */
 .auth-container {
-  min-height: calc(100vh - 100px);
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 2rem;
+  background: var(--tp-bg);
+}
+
+/* Optional gradient background for auth pages */
+.auth-container.with-gradient {
+  background: var(--tp-gradient-dark);
 }
 
 .auth-card {
   background: var(--tp-card-bg);
-  border-radius: var(--tp-radius-lg);
-  box-shadow: var(--tp-shadow-lg);
-  padding: 2.5rem;
+  border-radius: var(--tp-radius-xl);
+  box-shadow: var(--tp-shadow-xl);
+  padding: 3rem;
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
+  border: 1px solid var(--tp-border);
+}
+
+[data-theme="dark"] .auth-card {
+  box-shadow: var(--tp-shadow-xl), var(--tp-shadow-glow);
 }
 
 .auth-card .auth-logo {
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .auth-card .auth-logo img {
-  height: 60px;
+  height: 64px;
   width: auto;
+  filter: drop-shadow(0 4px 12px rgba(14, 165, 233, 0.2));
 }
 
 .auth-card .auth-title {
   text-align: center;
   font-weight: 700;
+  font-size: 1.75rem;
   color: var(--tp-text);
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.auth-card .auth-subtitle {
+  text-align: center;
+  color: var(--tp-text-muted);
+  margin-bottom: 2rem;
 }
 
 .auth-card .auth-footer {
   text-align: center;
-  margin-top: 1.5rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--tp-border);
   color: var(--tp-text-muted);
 }
 
 .auth-card .auth-footer a {
   color: var(--tp-primary);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .auth-card .auth-footer a:hover {
@@ -174,10 +507,63 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+   Alerts - Modern Style
+   -------------------------------------------------------------------------- */
+.alert {
+  border: none;
+  border-radius: var(--tp-radius);
+  padding: 1rem 1.25rem;
+  font-weight: 500;
+}
+
+.alert-success {
+  background: var(--tp-success-bg);
+  color: var(--tp-success);
+}
+
+.alert-danger {
+  background: var(--tp-danger-bg);
+  color: var(--tp-danger);
+}
+
+.alert-warning {
+  background: var(--tp-warning-bg);
+  color: var(--tp-warning);
+}
+
+.alert-info {
+  background: var(--tp-info-bg);
+  color: var(--tp-info);
+}
+
+/* --------------------------------------------------------------------------
+   Badges & Status Indicators
+   -------------------------------------------------------------------------- */
+.badge {
+  font-weight: 600;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--tp-radius-sm);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 0.5rem;
+}
+
+.status-dot.online { background: var(--tp-success); box-shadow: 0 0 8px var(--tp-success); }
+.status-dot.offline { background: var(--tp-text-muted); }
+.status-dot.warning { background: var(--tp-warning); box-shadow: 0 0 8px var(--tp-warning); }
+
+/* --------------------------------------------------------------------------
    Links
    -------------------------------------------------------------------------- */
 a {
   color: var(--tp-primary);
+  text-decoration: none;
+  transition: var(--tp-transition);
 }
 
 a:hover {
@@ -185,65 +571,84 @@ a:hover {
 }
 
 /* --------------------------------------------------------------------------
-   Tables
+   Page Headers
    -------------------------------------------------------------------------- */
-.table {
-  background-color: var(--tp-card-bg);
+.page-header {
+  margin-bottom: 2rem;
 }
 
-.table-striped > tbody > tr:nth-of-type(odd) {
-  background-color: rgba(45, 55, 72, 0.03);
+.page-header h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--tp-text);
+  margin-bottom: 0.5rem;
 }
 
-.table-hover > tbody > tr:hover {
-  background-color: rgba(45, 55, 72, 0.06);
+.page-header .page-subtitle {
+  color: var(--tp-text-muted);
 }
 
 /* --------------------------------------------------------------------------
-   Alerts - Match theme
+   Utility Classes
    -------------------------------------------------------------------------- */
-.alert-success {
-  background-color: rgba(56, 161, 105, 0.1);
-  border-color: var(--tp-success);
-  color: var(--tp-success);
+.text-primary { color: var(--tp-primary) !important; }
+.text-muted { color: var(--tp-text-muted) !important; }
+.bg-primary { background-color: var(--tp-primary) !important; }
+.border-primary { border-color: var(--tp-primary) !important; }
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.alert-danger {
-  background-color: rgba(229, 62, 62, 0.1);
-  border-color: var(--tp-danger);
-  color: var(--tp-danger);
-}
-
-.alert-warning {
-  background-color: rgba(221, 107, 32, 0.1);
-  border-color: var(--tp-warning);
-  color: var(--tp-warning);
-}
-
-.alert-info {
-  background-color: rgba(49, 130, 206, 0.1);
-  border-color: var(--tp-info);
-  color: var(--tp-info);
+[data-theme="dark"] .glass-effect {
+  background: rgba(0, 0, 0, 0.2);
 }
 
 /* --------------------------------------------------------------------------
-   Navbar customizations
+   Responsive Adjustments
    -------------------------------------------------------------------------- */
-.navbar-dark .navbar-brand {
-  font-weight: 600;
+@media (max-width: 768px) {
+  .auth-card {
+    padding: 2rem;
+    margin: 1rem;
+  }
+  
+  .stat-card .stat-value {
+    font-size: 1.5rem;
+  }
 }
 
 /* --------------------------------------------------------------------------
-   Utility classes
+   Chart Container Styling
    -------------------------------------------------------------------------- */
-.text-primary {
-  color: var(--tp-primary) !important;
+.chart-container {
+  background: var(--tp-card-bg);
+  border-radius: var(--tp-radius-lg);
+  padding: 1.5rem;
+  border: 1px solid var(--tp-border);
 }
 
-.bg-primary {
-  background-color: var(--tp-primary) !important;
+/* --------------------------------------------------------------------------
+   Loading States
+   -------------------------------------------------------------------------- */
+.skeleton {
+  background: linear-gradient(90deg, var(--tp-bg-secondary) 25%, var(--tp-border) 50%, var(--tp-bg-secondary) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: var(--tp-radius);
 }
 
-.border-primary {
-  border-color: var(--tp-primary) !important;
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* --------------------------------------------------------------------------
+   Print Styles
+   -------------------------------------------------------------------------- */
+@media print {
+  .navbar, .theme-toggle, .btn { display: none !important; }
+  body { background: white; color: black; }
 }
