@@ -30,10 +30,17 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 
 # Local application imports
 from .models import Device, DeviceApiKey, TelemetrySnapshot
+from .ratelimits import (
+    ratelimit_login,
+    ratelimit_register,
+    ratelimit_telemetry,
+    ratelimit_key_rotation,
+    ratelimited_error,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -516,6 +523,7 @@ def about(request):
 
 @csrf_exempt
 @require_POST
+@ratelimit_register
 def register_user(request):
     """
     Simple JSON registration endpoint.
@@ -570,6 +578,7 @@ def register_user(request):
 
 
 @csrf_exempt
+@ratelimit_login
 @require_POST
 def login_user(request):
     """
@@ -725,6 +734,7 @@ def recent_telemetry(request):
 
 @csrf_exempt
 @require_POST
+@ratelimit_telemetry
 def ingest_telemetry(request):
     """
     Ingest telemetry from an authenticated device.
@@ -940,6 +950,7 @@ def ping(request):
 @csrf_exempt
 @require_POST
 @api_login_required
+@ratelimit_register
 def register_device(request):
     """
     Register a thermostat to the logged-in user, or rotate its API key.
@@ -1051,6 +1062,7 @@ def list_device_keys(request, device_id: int):
 @csrf_exempt
 @require_POST
 @api_login_required
+@ratelimit_key_rotation
 def revoke_device_key(request, device_id, key_id):
     """
     Revoke (deactivate) a specific API key for a device owned by the current user.
@@ -1102,6 +1114,7 @@ def revoke_device_key(request, device_id, key_id):
 @csrf_exempt
 @require_POST
 @api_login_required
+@ratelimit_key_rotation
 def rotate_device_key(request, device_id):
     """
     Rotate the API key for a device owned by the current user.

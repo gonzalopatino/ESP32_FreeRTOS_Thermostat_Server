@@ -14,25 +14,11 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 import dj_database_url
+import django_ratelimit
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
-
-# ----------------------------------------------------------------------------
-# Rate Limiting Configuration
-# Using django-ratelimit
-# ----------------------------------------------------------------------------
-RATELIMIT_ENABLE = True
-RATELIMIT_USE_CACHE = "default"
-RATELIMIT_VIEW = "apps.api.views.ratelimited_error"  # Custom view for rate limit errors
-
-# Rate limit settings (can be overridden per-view)
-RATELIMIT_LOGIN = "5/m"           # 5 attempts per minute
-RATELIMIT_REGISTER = "3/h"        # 3 registrations per hour per IP
-RATELIMIT_TELEMETRY = "60/m"      # 60 requests per minute per device
-RATELIMIT_KEY_ROTATION = "5/h"    # 5 key rotations per hour per device
-
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -209,3 +195,11 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Rate limiting settings
+RATE_LIMIT = {
+    'default': '100/hour',
+    'login': '5/minute',
+    'logout': '5/minute',
+    'device': '10/minute',
+}
