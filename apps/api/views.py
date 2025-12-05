@@ -521,7 +521,7 @@ def about(request):
 # JSON auth endpoints
 # ---------------------------------------------------------------------------
 
-@csrf_exempt
+
 @require_POST
 @ratelimit_register
 def register_user(request):
@@ -577,7 +577,7 @@ def register_user(request):
     )
 
 
-@csrf_exempt
+
 @ratelimit_login
 @require_POST
 def login_user(request):
@@ -623,7 +623,7 @@ def login_user(request):
     )
 
 
-@csrf_exempt
+
 @require_POST
 def logout_user(request):
     """
@@ -730,7 +730,6 @@ def recent_telemetry(request):
             "data": data,
         }
     )
-
 
 @csrf_exempt
 @require_POST
@@ -947,7 +946,6 @@ def ping(request):
     )
 
 
-@csrf_exempt
 @require_POST
 @api_login_required
 @ratelimit_register
@@ -1024,7 +1022,6 @@ def register_device(request):
     )
 
 
-@csrf_exempt
 @api_login_required
 def list_device_keys(request, device_id: int):
     """
@@ -1059,7 +1056,7 @@ def list_device_keys(request, device_id: int):
     )
 
 
-@csrf_exempt
+
 @require_POST
 @api_login_required
 @ratelimit_key_rotation
@@ -1111,7 +1108,7 @@ def revoke_device_key(request, device_id, key_id):
     )
 
 
-@csrf_exempt
+
 @require_POST
 @api_login_required
 @ratelimit_key_rotation
