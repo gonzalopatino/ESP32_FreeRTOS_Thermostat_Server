@@ -118,32 +118,30 @@ def authenticate_device_from_header(request):
             status=401,
         )
 
-    device = Device.objects.filter(serial_number=serial).first()
-    if device is None:
-        return None, JsonResponse(
-            {"detail": "Unknown device serial"},
-            status=403,
-        )
-
+    # 1. ALWAYS hash the key first (constant time)
     key_hash = DeviceApiKey.hash_key(raw_key)
+
+    # 2. Single combined query (no early return on missing device)
     api_key_obj = (
         DeviceApiKey.objects.filter(
-            device=device,
+            device__serial_number=serial,
             key_hash=key_hash,
             is_active=True,
         )
+        .select_related("device")
         .order_by("-expires_at")
         .first()
     )
 
+    # 3. Generic error for ALL failures
     if api_key_obj is None or not api_key_obj.is_valid():
         return None, JsonResponse(
-            {"detail": "Invalid or expired device key"},
+            {"detail": "Invalid device credentials"},
             status=403,
         )
 
-    # All good
-    return device, None
+    # 4. Return device from the key object
+    return api_key_obj.device, None
 
 
 def _get_owned_device_or_404(user, device_id: int) -> Device:
