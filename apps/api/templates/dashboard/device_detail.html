@@ -475,7 +475,7 @@
                   <th>Output</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="recentTelemetryBody">
                 {% for s in snapshots %}
                   <tr>
                     {# Server time: Keep as raw UTC, no JS conversion #}
@@ -928,7 +928,7 @@
 {% block extra_js %}
   {{ block.super }}
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="{% static 'api/js/device_detail.js' %}?v=20251205b"></script>
+  <script src="{% static 'api/js/device_detail.js' %}?v=20251208b"></script>
   
   <script>
   // Email Alert Dials Controller

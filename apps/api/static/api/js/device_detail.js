@@ -798,6 +798,9 @@ document.addEventListener("DOMContentLoaded", function () {
     
     rtTempChart.update('default');
     
+    // Update the Recent Telemetry table with the same data (newest first, limit 20)
+    updateRecentTable(rows.slice(0, 20));
+    
     // Update offline indicator badge and legend hint
     const rtOfflineIndicator = document.getElementById('rtOfflineIndicator');
     const rtLegendHint = document.getElementById('rtChartLegendHint');
@@ -894,6 +897,91 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // =========================================================================
+  // RECENT TELEMETRY TABLE UPDATE
+  // =========================================================================
+  
+  // Helper: Format server timestamp for display (UTC)
+  function formatServerTs(isoStr) {
+    if (!isoStr) return "&ndash;";
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return "&ndash;";
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    const hours = String(d.getUTCHours()).padStart(2, "0");
+    const mins = String(d.getUTCMinutes()).padStart(2, "0");
+    const secs = String(d.getUTCSeconds()).padStart(2, "0");
+    return `${year}-${month}-${day} ${hours}:${mins}:${secs} UTC`;
+  }
+
+  // Helper: Format device timestamp for display (local time)
+  function formatDeviceTs(isoStr) {
+    if (!isoStr) return "&ndash;";
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return "&ndash;";
+    return formatLocalDateTime(d);
+  }
+
+  /**
+   * Update the Recent Telemetry table with provided data.
+   * Called by loadRealtimeChart() when it receives new data.
+   * @param {Array} rows - Array of telemetry objects (newest first)
+   */
+  function updateRecentTable(rows) {
+    const tbody = document.getElementById("recentTelemetryBody");
+    const countSpan = document.getElementById("recentTableCount");
+    
+    if (!tbody) return;
+
+    // Update count badge
+    if (countSpan) {
+      countSpan.textContent = rows.length;
+    }
+
+    // Build table rows
+    if (!rows || rows.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="9" class="text-center text-muted">
+            No telemetry yet.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    // Build HTML for all rows
+    let html = "";
+    for (const s of rows) {
+      const serverTs = formatServerTs(s.server_ts);
+      const deviceTs = formatDeviceTs(s.device_ts);
+      const tin = s.temp_inside_c ?? "";
+      const tout = s.temp_outside_c ?? "";
+      const sp = s.setpoint_c ?? "";
+      const hyst = s.hysteresis_c ?? "";
+      const rh = s.humidity_percent ?? "";
+      const mode = s.mode ?? "";
+      const output = s.output ?? "";
+
+      html += `
+        <tr>
+          <td>${serverTs}</td>
+          <td>${deviceTs}</td>
+          <td>${tin}</td>
+          <td>${tout}</td>
+          <td>${sp}</td>
+          <td>${hyst}</td>
+          <td>${rh}</td>
+          <td>${mode}</td>
+          <td>${output}</td>
+        </tr>
+      `;
+    }
+
+    tbody.innerHTML = html;
+  }
+
+  // =========================================================================
   // INITIALIZATION
   // =========================================================================
   console.log("Device detail script: running initial loads");
@@ -902,7 +990,7 @@ document.addEventListener("DOMContentLoaded", function () {
   loadRealtimeChart();
   localizeTableTimes();
 
-  // Polling intervals
+  // Polling intervals (every 15 seconds)
   setInterval(loadRealtime, 15000);
   setInterval(loadRealtimeChart, 15000);
 
