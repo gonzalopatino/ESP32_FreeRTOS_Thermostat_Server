@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Setup Device - {{ device.serial_number }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      
+      <!-- Success Alert -->
+      <div class="alert alert-success d-flex align-items-center mb-4" role="alert">
+        <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img">
+          <use xlink:href="#check-circle-fill"/>
+        </svg>
+        <div>
+          <strong>Device registered!</strong> Now scan the QR code with your phone to complete setup.
+        </div>
+      </div>
+
+      <!-- Main Card -->
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">
+            <i class="bi bi-qr-code me-2"></i>
+            Complete Thermostat Setup
+          </h4>
+        </div>
+        <div class="card-body text-center py-5">
+          
+          <h5 class="mb-4">Device: <code>{{ device.serial_number }}</code></h5>
+          
+          <!-- IP Address Input for QR Code -->
+          <div class="mb-4">
+            <label for="deviceIp" class="form-label">
+              <i class="bi bi-wifi me-1"></i>
+              Enter Thermostat IP Address (shown on LCD):
+            </label>
+            <div class="input-group mx-auto" style="max-width: 300px;">
+              <input type="text" class="form-control text-center" id="deviceIp" 
+                     placeholder="e.g., 10.0.0.166" value="">
+              <button class="btn btn-primary" type="button" onclick="updateQR()">
+                Update QR
+              </button>
+            </div>
+          </div>
+
+          <!-- QR Code Container -->
+          <div class="mb-4">
+            <div id="qrcode" class="d-inline-block p-3 bg-white border rounded shadow-sm"></div>
+            <p class="text-muted mt-2" id="qrDescription">
+              <small>Scan this QR code with your phone's camera app</small>
+            </p>
+          </div>
+          
+          <div class="alert alert-info mx-auto" style="max-width: 500px;">
+            <h6 class="alert-heading">
+              <i class="bi bi-phone me-1"></i>
+              How to complete setup:
+            </h6>
+            <ol class="text-start mb-0">
+              <li class="mb-2">Complete WiFi setup on your thermostat</li>
+              <li class="mb-2">Note the <strong>IP address</strong> shown on the LCD</li>
+              <li class="mb-2">Enter that IP address above and click "Update QR"</li>
+              <li><strong>Scan the QR code with your phone's camera app</strong> - the API key will be sent automatically!</li>
+            </ol>
+          </div>
+
+          <!-- Manual Copy Option -->
+          <div class="mt-4 pt-4 border-top">
+            <p class="text-muted mb-2">Or copy the API key manually:</p>
+            <div class="input-group mx-auto" style="max-width: 500px;">
+              <input type="text" class="form-control font-monospace" id="apiKeyInput" 
+                     value="{{ api_key }}" readonly>
+              <button class="btn btn-outline-secondary" type="button" onclick="copyApiKey()">
+                <i class="bi bi-clipboard"></i> Copy
+              </button>
+            </div>
+            <div id="copySuccess" class="text-success mt-2" style="display: none;">
+              <i class="bi bi-check-circle"></i> Copied to clipboard!
+            </div>
+          </div>
+
+        </div>
+        <div class="card-footer">
+          <a href="{% url 'dashboard_devices' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Devices
+          </a>
+          <a href="{% url 'dashboard_device_detail' device.id %}" class="btn btn-primary">
+            View Device Details <i class="bi bi-arrow-right ms-1"></i>
+          </a>
+        </div>
+      </div>
+
+      <!-- Warning Card -->
+      <div class="card border-warning mt-4">
+        <div class="card-body">
+          <h6 class="card-title text-warning">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Important Security Notice
+          </h6>
+          <p class="card-text text-muted mb-0">
+            This API key will <strong>not be shown again</strong>. If you lose it, you'll need to 
+            generate a new one from the device details page. Keep this page open on another device
+            (like a computer) while completing setup on your phone.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- SVG Icons -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="check-circle-fill" fill="currentColor" viewBox="0 0 16 16">
+    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+  </symbol>
+</svg>
+
+<!-- QR Code Generator (using qrcodejs - reliable CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+var qrCode = null;
+var apiKey = "{{ api_key|escapejs }}";
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Start with just the API key in QR code
+  createQR(apiKey);
+});
+
+function createQR(text) {
+  var qrContainer = document.getElementById('qrcode');
+  qrContainer.innerHTML = ''; // Clear existing
+  
+  try {
+    qrCode = new QRCode(qrContainer, {
+      text: text,
+      width: 256,
+      height: 256,
+      colorDark: "#1e3a5f",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) {
+    console.error('QR Code error:', e);
+    qrContainer.innerHTML = '<div class="alert alert-warning">QR code failed to load. Use manual copy below.</div>';
+  }
+}
+
+function updateQR() {
+  var ip = document.getElementById('deviceIp').value.trim();
+  var desc = document.getElementById('qrDescription');
+  
+  if (ip && ip.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+    // Create URL that points to the ESP32's step3 endpoint with API key
+    var url = 'http://' + ip + '/setup/step3?api_key=' + encodeURIComponent(apiKey);
+    console.log('QR URL:', url);
+    createQR(url);
+    desc.innerHTML = '<small class="text-success"><i class="bi bi-check-circle"></i> Scan to auto-submit API key to <strong>' + ip + '</strong></small><br><code style="font-size:10px;word-break:break-all;">' + url + '</code>';
+  } else if (ip) {
+    desc.innerHTML = '<small class="text-danger">Invalid IP address format</small>';
+  } else {
+    // No IP - just show raw API key
+    createQR(apiKey);
+    desc.innerHTML = '<small>Enter thermostat IP above for auto-setup, or scan this for manual copy</small>';
+  }
+}
+
+function copyApiKey() {
+  var input = document.getElementById('apiKeyInput');
+  input.select();
+  input.setSelectionRange(0, 99999);
+  
+  navigator.clipboard.writeText(input.value).then(function() {
+    var successMsg = document.getElementById('copySuccess');
+    successMsg.style.display = 'block';
+    setTimeout(function() {
+      successMsg.style.display = 'none';
+    }, 3000);
+  }).catch(function(err) {
+    // Fallback for older browsers
+    document.execCommand('copy');
+    var successMsg = document.getElementById('copySuccess');
+    successMsg.style.display = 'block';
+    setTimeout(function() {
+      successMsg.style.display = 'none';
+    }, 3000);
+  });
+}
+</script>
+{% endblock %}

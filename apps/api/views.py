@@ -607,16 +607,19 @@ def dashboard_register_device(request):
         # Create a fresh API key and get the raw value once
         api_key_obj, raw_key = DeviceApiKey.create_for_device(device, ttl_days=365)
 
-        messages.success(
+        # Show the QR code page with the API key
+        # The QR code contains the raw API key for the phone camera to scan
+        qr_content = raw_key  # Just the raw key for scanning
+        
+        return render(
             request,
-            (
-                f"Device '{device.serial_number}' registered. "
-                f"Copy this API key now, you will not see it again: {raw_key}"
-            ),
+            "dashboard/device_api_key_qr.html",
+            {
+                "device": device,
+                "api_key": raw_key,
+                "qr_url": qr_content,
+            },
         )
-
-        # After successful registration, go back to dashboard list
-        return redirect("dashboard_devices")
 
     # GET – show the registration form
     return render(request, "dashboard/register_device.html")
@@ -641,14 +644,17 @@ def dashboard_device_detail(request, device_id: int):
             api_key_obj, raw_key = DeviceApiKey.create_for_device(
                 device, ttl_days=365
             )
-            messages.success(
+            # Show the QR code page with the new API key (raw key for scanning)
+            qr_content = raw_key
+            return render(
                 request,
-                (
-                    "API key rotated. Copy this new key now, "
-                    f"you will not see it again: {raw_key}"
-                ),
+                "dashboard/device_api_key_qr.html",
+                {
+                    "device": device,
+                    "api_key": raw_key,
+                    "qr_url": qr_content,
+                },
             )
-            return redirect("dashboard_device_detail", device_id=device.id)
 
         elif action == "revoke":
             key_id = request.POST.get("key_id")
