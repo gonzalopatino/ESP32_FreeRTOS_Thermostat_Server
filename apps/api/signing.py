@@ -1,8 +1,20 @@
-# apps/api/signing.py
 """
-URL signing utilities for obfuscating sensitive identifiers in URLs.
-Uses Django's built-in signing module for tamper-proof, opaque tokens.
+ThermostatRTOS Platform - URL Signing Utilities
+
+This module provides URL signing utilities for obfuscating sensitive
+identifiers (like device serial numbers) in URLs. Uses Django's built-in
+signing module for tamper-proof, opaque tokens.
+
+Functions:
+    encode_serial: Convert serial number to signed token
+    decode_serial: Convert signed token back to serial number
+
+Author:     Gonzalo Patino
+Created:    2025
+Course:     Southern New Hampshire University
+License:    Academic Use Only - See LICENSE file
 """
+
 from django.core import signing
 
 # Salt ensures tokens for different purposes can't be swapped

@@ -1,5 +1,16 @@
 """
-Shared helper functions, decorators, and utilities for views.
+ThermostatRTOS Platform - View Helper Functions
+
+This module provides shared utilities for view functions including:
+    - Authentication decorators (api_login_required, device auth)
+    - Email alert functions for temperature threshold notifications
+    - Query helpers for telemetry data
+    - Parsing utilities for boolean and datetime values
+
+Author:     Gonzalo Patino
+Created:    2025
+Course:     Southern New Hampshire University
+License:    Academic Use Only - See LICENSE file
 """
 
 import logging

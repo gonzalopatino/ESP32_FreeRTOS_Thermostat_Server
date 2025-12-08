@@ -1,3 +1,20 @@
+"""
+ThermostatRTOS Platform - Database Models
+
+This module defines the data models for the ThermostatRTOS platform:
+    - StoragePlan: User storage tier definitions
+    - UserStorageProfile: Per-user storage quota tracking
+    - Device: IoT thermostat device registration
+    - DeviceApiKey: Secure API key management with SHA-256 hashing
+    - TelemetrySnapshot: Temperature and HVAC state telemetry records
+    - DeviceAlertSettings: Configurable temperature alert thresholds
+
+Author:     Gonzalo Patino
+Created:    2025
+Course:     Southern New Hampshire University
+License:    Academic Use Only - See LICENSE file
+"""
+
 from datetime import timedelta
 import hashlib
 import secrets

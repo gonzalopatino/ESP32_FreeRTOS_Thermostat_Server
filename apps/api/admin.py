@@ -1,6 +1,15 @@
+"""
+ThermostatRTOS Platform - Django Admin Configuration
 
+This module registers models with the Django admin interface for
+administrative management of devices, API keys, and telemetry data.
 
-# Register your models here.
+Author:     Gonzalo Patino
+Created:    2025
+Course:     Southern New Hampshire University
+License:    Academic Use Only - See LICENSE file
+"""
+
 from django.contrib import admin
 from .models import Device, DeviceApiKey, TelemetrySnapshot
 

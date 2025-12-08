@@ -1,5 +1,16 @@
 """
-Authentication views - both HTML pages and JSON API endpoints.
+ThermostatRTOS Platform - Authentication Views
+
+This module handles user authentication for both HTML pages and JSON API:
+    - HTML: register_page, settings_page, logout_view
+    - JSON API: register_user, login_user, logout_user
+
+Includes rate limiting protection against brute-force attacks.
+
+Author:     Gonzalo Patino
+Created:    2025
+Course:     Southern New Hampshire University
+License:    Academic Use Only - See LICENSE file
 """
 
 import json

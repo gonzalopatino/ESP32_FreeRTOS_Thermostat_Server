@@ -1,19 +1,22 @@
 """
-URL configuration for config project.
+ThermostatRTOS Platform - Root URL Configuration
 
-The `urlpatterns` list routes URLs to views. For more information please see:
+This module defines the root URL routing for the Django project:
+    - /admin/ - Django admin interface
+    - /api/ - REST API endpoints
+    - /accounts/ - User authentication pages
+    - /dashboard/ - User dashboard views
+    - /health/ - Health check endpoint
+
+Author:     Gonzalo Patino
+Created:    2025
+Course:     Southern New Hampshire University
+License:    Academic Use Only - See LICENSE file
+
+For URL routing reference:
     https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path, include
 from .views import health

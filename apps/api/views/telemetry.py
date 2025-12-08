@@ -1,5 +1,18 @@
 """
-Telemetry views - ingestion, querying, and CSV export.
+ThermostatRTOS Platform - Telemetry Views
+
+This module handles telemetry data for IoT thermostat devices:
+    - ingest_telemetry: Receive telemetry from authenticated devices
+    - telemetry_query: Query telemetry with time range and chart support
+    - export_telemetry_csv: Export telemetry data to CSV format
+    - realtime_query: Fetch most recent telemetry for real-time charts
+
+Device authentication uses SHA-256 hashed API keys with rate limiting.
+
+Author:     Gonzalo Patino
+Created:    2025
+Course:     Southern New Hampshire University
+License:    Academic Use Only - See LICENSE file
 """
 
 import csv

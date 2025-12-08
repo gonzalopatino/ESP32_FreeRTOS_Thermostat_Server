@@ -1,5 +1,18 @@
 """
-Dashboard HTML views - device management, data management, and settings pages.
+ThermostatRTOS Platform - Dashboard Views
+
+This module provides HTML views for the user dashboard:
+    - devices: Device listing and registration
+    - device_detail: Individual device monitoring with real-time charts
+    - data_management: Storage usage and telemetry data deletion
+    - device_api_key_qr: QR code generation for device API keys
+
+All views require user authentication via @login_required.
+
+Author:     Gonzalo Patino
+Created:    2025
+Course:     Southern New Hampshire University
+License:    Academic Use Only - See LICENSE file
 """
 
 from datetime import timedelta

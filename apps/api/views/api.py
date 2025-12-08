@@ -1,5 +1,20 @@
 """
-JSON API endpoints for device and API key management.
+ThermostatRTOS Platform - JSON API Endpoints
+
+This module provides JSON API endpoints for programmatic access:
+    - ping: Health check endpoint
+    - register_device: Register new IoT thermostat devices
+    - list_devices: Retrieve user's registered devices
+    - list_device_keys: View API keys for a device
+    - rotate_device_key: Generate new API key for a device
+    - revoke_device_key: Deactivate an API key
+
+All endpoints return JSON responses and require session authentication.
+
+Author:     Gonzalo Patino
+Created:    2025
+Course:     Southern New Hampshire University
+License:    Academic Use Only - See LICENSE file
 """
 
 import json

@@ -1,5 +1,20 @@
 #!/usr/bin/env python
-"""Django's command-line utility for administrative tasks."""
+"""
+ThermostatRTOS Platform - Django Management Script
+
+Django's command-line utility for administrative tasks such as
+running the development server, database migrations, and shell access.
+
+Author:     Gonzalo Patino
+Created:    2025
+Course:     Southern New Hampshire University
+License:    Academic Use Only - See LICENSE file
+
+Usage:
+    python manage.py runserver
+    python manage.py migrate
+    python manage.py createsuperuser
+"""
 import os
 import sys
 

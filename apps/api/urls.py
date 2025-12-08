@@ -1,3 +1,18 @@
+"""
+ThermostatRTOS Platform - API URL Configuration
+
+This module defines URL routes for the API application including:
+    - Authentication endpoints (register, login, logout)
+    - Device management endpoints
+    - Telemetry ingestion and query endpoints
+    - Dashboard HTML views
+
+Author:     Gonzalo Patino
+Created:    2025
+Course:     Southern New Hampshire University
+License:    Academic Use Only - See LICENSE file
+"""
+
 from django.urls import path
 from . import views
 from .views import telemetry_query, ingest_telemetry

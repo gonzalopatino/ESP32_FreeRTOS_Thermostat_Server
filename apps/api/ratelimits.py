@@ -1,6 +1,19 @@
 """
-Rate limiting decorators for API endpoints.
+ThermostatRTOS Platform - Rate Limiting Decorators
+
+This module provides rate limiting decorators to protect API endpoints
+from abuse and brute-force attacks:
+    - ratelimit_login: 5 attempts per minute
+    - ratelimit_register: 3 registrations per hour per IP
+    - ratelimit_telemetry: 60 requests per minute per device
+    - ratelimit_key_rotation: 5 key rotations per hour per device
+
+Author:     Gonzalo Patino
+Created:    2025
+Course:     Southern New Hampshire University
+License:    Academic Use Only - See LICENSE file
 """
+
 from functools import wraps
 from django.conf import settings
 from django.http import JsonResponse

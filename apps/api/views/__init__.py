@@ -1,13 +1,19 @@
 """
-Views package for the API app.
+ThermostatRTOS Platform - Views Package
 
-This module re-exports all views for backward compatibility with existing imports.
-Views are organized into submodules:
-  - helpers: Shared utilities, decorators, and alert functions
-  - auth: HTML and JSON authentication views
-  - dashboard: HTML dashboard views (devices, settings, data management)
-  - api: JSON API endpoints for device and key management
-  - telemetry: Telemetry ingestion, querying, and export
+This package organizes all view functions into logical submodules:
+    - helpers: Shared utilities, decorators, and alert functions
+    - auth: HTML and JSON authentication views
+    - dashboard: HTML dashboard views (devices, settings, data management)
+    - api: JSON API endpoints for device and key management
+    - telemetry: Telemetry ingestion, querying, and export
+
+All views are re-exported from this module for backward compatibility.
+
+Author:     Gonzalo Patino
+Created:    2025
+Course:     Southern New Hampshire University
+License:    Academic Use Only - See LICENSE file
 """
 
 # Re-export from helpers
