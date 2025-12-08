@@ -54,6 +54,13 @@ DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
 raw_hosts = os.getenv("ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = [h.strip() for h in raw_hosts.split(",") if h.strip()]
 
+# Admins receive error emails when DEBUG=False
+ADMINS = [
+    (os.getenv("ADMIN_NAME", "Admin"), os.getenv("ADMIN_EMAIL", "")),
+]
+# Filter out empty email entries
+ADMINS = [(name, email) for name, email in ADMINS if email]
+
 
 
 
