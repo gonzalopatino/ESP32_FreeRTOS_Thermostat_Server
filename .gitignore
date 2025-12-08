@@ -23,6 +23,7 @@ media/
 
 # Logs
 *.log
+logs/
 
 # Byte-compiled / cached
 *.pyc

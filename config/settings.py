@@ -27,6 +27,16 @@ RATELIMIT_ENABLE = True
 RATELIMIT_USE_CACHE = "default"
 RATELIMIT_VIEW = "apps.api.views.ratelimited_error"  # Custom view for rate limit errors
 
+# ----------------------------------------------------------------------------
+# Cache Configuration (required for rate limiting)
+# ----------------------------------------------------------------------------
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
+    }
+}
+
 # Rate limit settings (can be overridden per-view)
 RATELIMIT_LOGIN = "5/m"           # 5 attempts per minute
 RATELIMIT_REGISTER = "3/h"        # 3 registrations per hour per IP
@@ -63,6 +73,12 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 #    - Active users stay logged in,
 #    - Users who go idle longer than SESSION_COOKIE_AGE are logged out.
 SESSION_SAVE_EVERY_REQUEST = True
+
+# 4) Prevent JavaScript from accessing session cookie (XSS protection)
+SESSION_COOKIE_HTTPONLY = True
+
+# 5) Prevent JavaScript from accessing CSRF cookie
+CSRF_COOKIE_HTTPONLY = True
 
 
 
@@ -181,6 +197,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 10,  # Increased from default 8
+        }
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -244,3 +263,77 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "ThermostatRTOS <noreply@thermostat.local>")
+
+
+# ---------------------------------------------------------------------------
+# Logging Configuration
+# ---------------------------------------------------------------------------
+# Captures security events, errors, and application logs
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {asctime} {module}: {message}',
+            'style': '{',
+        },
+    },
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'level': 'WARNING',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'django.log',
+            'formatter': 'verbose',
+        },
+        'security_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'security.log',
+            'formatter': 'verbose',
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'filters': ['require_debug_false'],
+            'class': 'django.utils.log.AdminEmailHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'django.security': {
+            'handlers': ['console', 'security_file', 'mail_admins'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console', 'file', 'mail_admins'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'apps.api': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
