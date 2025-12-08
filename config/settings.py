@@ -52,7 +52,7 @@ ALLOWED_HOSTS = [h.strip() for h in raw_hosts.split(",") if h.strip()]
 
 # 1) Session lifetime in seconds.
 #    Example: 30 minutes = 30 * 60 = 1800
-SESSION_COOKIE_AGE = 9000  # 15 minutes of inactivity
+SESSION_COOKIE_AGE = 9000  # 150 minutes (2.5 hours) of inactivity
 
 # 2) If True, the session cookie is deleted when the browser is closed.
 #    If you want "stay logged in" to survive browser restarts, keep this False.
