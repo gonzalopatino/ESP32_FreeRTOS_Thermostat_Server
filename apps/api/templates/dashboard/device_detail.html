@@ -418,6 +418,81 @@
   color: #3b82f6;
 }
 
+.config-dial-icon.mode-icon {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(34, 197, 94, 0.15) 100%);
+  color: #10b981;
+}
+
+/* Mode Buttons */
+.mode-buttons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border: 2px solid var(--tp-border);
+  border-radius: 12px;
+  background: var(--tp-bg);
+  color: var(--tp-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 90px;
+}
+
+.mode-btn i {
+  font-size: 1.5rem;
+}
+
+.mode-btn span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mode-btn:hover {
+  border-color: var(--tp-primary);
+  color: var(--tp-primary);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.mode-btn.active {
+  border-color: var(--tp-primary);
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--tp-primary);
+}
+
+.mode-btn.active[data-mode="OFF"] {
+  border-color: #6b7280;
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+}
+
+.mode-btn.active[data-mode="HEAT"] {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.mode-btn.active[data-mode="COOL"] {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+.mode-btn.active[data-mode="AUTO"] {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
 .config-dial-body {
   text-align: center;
 }
@@ -1006,6 +1081,41 @@
                     <div class="config-range-labels">
                       <span>0.1°C</span>
                       <span>3.0°C</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mode Control -->
+              <div class="col-12">
+                <div class="config-dial-card">
+                  <div class="config-dial-header">
+                    <div class="config-dial-icon mode-icon">
+                      <i class="bi bi-toggles"></i>
+                    </div>
+                    <div>
+                      <h6 class="mb-0">Operating Mode</h6>
+                      <small class="text-muted">Select heating, cooling, or turn off the thermostat</small>
+                    </div>
+                  </div>
+                  <div class="config-dial-body">
+                    <div class="mode-buttons" id="modeButtons">
+                      <button type="button" class="mode-btn" data-mode="OFF">
+                        <i class="bi bi-power"></i>
+                        <span>OFF</span>
+                      </button>
+                      <button type="button" class="mode-btn" data-mode="HEAT">
+                        <i class="bi bi-fire"></i>
+                        <span>HEAT</span>
+                      </button>
+                      <button type="button" class="mode-btn" data-mode="COOL">
+                        <i class="bi bi-snow"></i>
+                        <span>COOL</span>
+                      </button>
+                      <button type="button" class="mode-btn" data-mode="AUTO">
+                        <i class="bi bi-arrow-repeat"></i>
+                        <span>AUTO</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1736,6 +1846,10 @@
     const setpointValue = document.getElementById('setpointValue');
     const hysteresisSlider = document.getElementById('hysteresisSlider');
     const hysteresisValue = document.getElementById('hysteresisValue');
+    const modeButtons = document.querySelectorAll('.mode-btn');
+    
+    // Current mode selection
+    let currentMode = 'OFF';
 
     // Current device IP - prioritize server-provided IP from telemetry, fallback to localStorage
     const serverDeviceIp = '{{ device.last_ip|default:"" }}';
@@ -1763,6 +1877,25 @@
     if (hysteresisSlider) {
       hysteresisSlider.addEventListener('input', updateSliderDisplays);
     }
+
+    // Mode button handling
+    function setModeSelection(mode) {
+      currentMode = mode;
+      modeButtons.forEach(btn => {
+        if (btn.dataset.mode === mode) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    // Bind mode button clicks
+    modeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        setModeSelection(btn.dataset.mode);
+      });
+    });
 
     // Show status message
     function showStatus(message, type) {
@@ -1836,6 +1969,9 @@
         if (data.hysteresis_c !== undefined && hysteresisSlider) {
           hysteresisSlider.value = data.hysteresis_c;
         }
+        if (data.mode) {
+          setModeSelection(data.mode);
+        }
         updateSliderDisplays();
 
         setConnectionStatus(true);
@@ -1875,7 +2011,8 @@
           mode: 'cors',
           body: JSON.stringify({
             setpoint_c: setpoint,
-            hysteresis_c: hysteresis
+            hysteresis_c: hysteresis,
+            mode: currentMode
           })
         });
 
@@ -1894,9 +2031,12 @@
         if (data.hysteresis_c !== undefined && hysteresisSlider) {
           hysteresisSlider.value = data.hysteresis_c;
         }
+        if (data.mode) {
+          setModeSelection(data.mode);
+        }
         updateSliderDisplays();
 
-        showStatus(`✓ Applied: Setpoint ${data.setpoint_c}°C, Hysteresis ±${data.hysteresis_c}°C`, 'success');
+        showStatus(`✓ Applied: ${data.mode} mode, Setpoint ${data.setpoint_c}°C, Hysteresis ±${data.hysteresis_c}°C`, 'success');
 
       } catch (err) {
         console.error('Apply config error:', err);
