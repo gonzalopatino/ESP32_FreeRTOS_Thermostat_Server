@@ -213,6 +213,9 @@ class Device(models.Model):
 
     # NEW: last time we heard from this device
     last_seen = models.DateTimeField(null=True, blank=True)
+    
+    # Device's local IP address (reported in telemetry)
+    last_ip = models.GenericIPAddressField(null=True, blank=True)
 
     def __str__(self):
         label = self.name or self.serial_number

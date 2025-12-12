@@ -371,6 +371,131 @@
   border-radius: 3px;
   font-size: 0.7rem;
 }
+
+/* ==========================================================================
+   Remote Configuration Widget Styles
+   ========================================================================== */
+
+.config-dial-card {
+  background: var(--tp-bg-secondary);
+  border-radius: var(--tp-radius-lg);
+  padding: 1.5rem;
+  border: 1px solid var(--tp-border);
+  transition: all 0.3s ease;
+}
+
+.config-dial-card:hover {
+  border-color: var(--tp-primary);
+  box-shadow: var(--tp-shadow-md);
+}
+
+.config-dial-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--tp-border);
+}
+
+.config-dial-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.config-dial-icon.setpoint-icon {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(249, 115, 22, 0.15) 100%);
+  color: #ef4444;
+}
+
+.config-dial-icon.hysteresis-icon {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  color: #3b82f6;
+}
+
+.config-dial-body {
+  text-align: center;
+}
+
+.config-value-display {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--tp-text);
+  margin-bottom: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.config-value-display .config-value {
+  color: var(--tp-primary);
+}
+
+.config-value-display .config-unit {
+  font-size: 1.25rem;
+  color: var(--tp-text-secondary);
+  margin-left: 0.25rem;
+}
+
+.config-slider {
+  width: 100%;
+  height: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.config-slider::-webkit-slider-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--tp-primary);
+  border: 3px solid var(--tp-card-bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.config-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, var(--tp-primary) 0%, var(--tp-secondary) 100%);
+  border-radius: 4px;
+}
+
+.config-slider.setpoint-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, #3b82f6 0%, #ef4444 100%);
+}
+
+.config-slider.hysteresis-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, #10b981 0%, #f59e0b 100%);
+}
+
+.config-range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--tp-text-muted);
+}
+
+.config-controls.enabled {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#configStatus {
+  min-height: 1.5rem;
+}
+
+#configStatus.success {
+  color: #10b981;
+}
+
+#configStatus.error {
+  color: #ef4444;
+}
+
+#configStatus.loading {
+  color: var(--tp-text-muted);
+}
 </style>
 
 <!-- SVG Gradients -->
@@ -773,6 +898,142 @@
       aria-labelledby="control-tab"
       tabindex="0"
     >
+      <!-- Remote Configuration Widget -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">
+            <i class="bi bi-sliders me-2"></i>Remote Configuration
+          </h5>
+          <p class="text-muted small">
+            Adjust the thermostat's setpoint and hysteresis remotely. Enter the device's local IP address to connect.
+          </p>
+
+          <!-- Device Connection -->
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <label for="deviceIp" class="form-label">Device IP Address</label>
+              <div class="input-group">
+                <span class="input-group-text">http://</span>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="deviceIp" 
+                  placeholder="192.168.1.100"
+                  pattern="^(\d{1,3}\.){3}\d{1,3}$"
+                  value="{% if device.last_ip %}{{ device.last_ip }}{% endif %}"
+                >
+                <button class="btn btn-outline-primary" type="button" id="btnFetchConfig">
+                  <i class="bi bi-arrow-clockwise me-1"></i>Fetch
+                </button>
+              </div>
+              {% if device.last_ip %}
+              <small class="text-success"><i class="bi bi-check-circle me-1"></i>Auto-detected from device telemetry</small>
+              {% else %}
+              <small class="text-muted">Enter the thermostat's local IP address (shown on device display or router)</small>
+              {% endif %}
+            </div>
+            <div class="col-md-6">
+              <div id="configConnectionStatus" class="mt-4">
+                <span class="badge bg-secondary">Not connected</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Configuration Controls -->
+          <div id="configControls" class="config-controls" style="opacity: 0.5; pointer-events: none;">
+            <div class="row g-4">
+              <!-- Setpoint Control -->
+              <div class="col-md-6">
+                <div class="config-dial-card">
+                  <div class="config-dial-header">
+                    <div class="config-dial-icon setpoint-icon">
+                      <i class="bi bi-thermometer-half"></i>
+                    </div>
+                    <div>
+                      <h6 class="mb-0">Temperature Setpoint</h6>
+                      <small class="text-muted">Target temperature (15°C - 28°C)</small>
+                    </div>
+                  </div>
+                  <div class="config-dial-body">
+                    <div class="config-value-display">
+                      <span id="setpointValue" class="config-value">--</span>
+                      <span class="config-unit">°C</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      class="form-range config-slider setpoint-slider" 
+                      id="setpointSlider"
+                      min="15" 
+                      max="28" 
+                      step="0.5"
+                      value="22"
+                    >
+                    <div class="config-range-labels">
+                      <span>15°C</span>
+                      <span>28°C</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Hysteresis Control -->
+              <div class="col-md-6">
+                <div class="config-dial-card">
+                  <div class="config-dial-header">
+                    <div class="config-dial-icon hysteresis-icon">
+                      <i class="bi bi-arrows-collapse"></i>
+                    </div>
+                    <div>
+                      <h6 class="mb-0">Hysteresis</h6>
+                      <small class="text-muted">Deadband around setpoint (0.1°C - 3.0°C)</small>
+                    </div>
+                  </div>
+                  <div class="config-dial-body">
+                    <div class="config-value-display">
+                      <span>±</span>
+                      <span id="hysteresisValue" class="config-value">--</span>
+                      <span class="config-unit">°C</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      class="form-range config-slider hysteresis-slider" 
+                      id="hysteresisSlider"
+                      min="0.1" 
+                      max="3.0" 
+                      step="0.1"
+                      value="0.5"
+                    >
+                    <div class="config-range-labels">
+                      <span>0.1°C</span>
+                      <span>3.0°C</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Apply Button -->
+            <div class="mt-4 d-flex justify-content-between align-items-center">
+              <div id="configStatus" class="text-muted small"></div>
+              <button class="btn btn-primary" type="button" id="btnApplyConfig">
+                <i class="bi bi-check-lg me-1"></i>Apply Changes
+              </button>
+            </div>
+          </div>
+
+          <!-- Info Alert -->
+          <div class="alert alert-info mt-4 mb-0" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Note:</strong> Your computer must be on the same local network as the thermostat. 
+            {% if device.last_ip %}
+            The IP address is auto-detected from device telemetry. If it's incorrect, you can manually enter a different IP.
+            {% else %}
+            The device IP will be auto-detected once the thermostat sends telemetry. You can also find it on the thermostat's display or in your router.
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-body">
           <h5 class="card-title">API key management</h5>
@@ -1455,6 +1716,215 @@
         updateMasterToggle();
       }
     }
+  })();
+  </script>
+
+  <!-- Remote Configuration Widget Script -->
+  <script>
+  (function() {
+    'use strict';
+
+    // DOM Elements
+    const deviceIpInput = document.getElementById('deviceIp');
+    const btnFetch = document.getElementById('btnFetchConfig');
+    const btnApply = document.getElementById('btnApplyConfig');
+    const configControls = document.getElementById('configControls');
+    const connectionStatus = document.getElementById('configConnectionStatus');
+    const configStatus = document.getElementById('configStatus');
+    
+    const setpointSlider = document.getElementById('setpointSlider');
+    const setpointValue = document.getElementById('setpointValue');
+    const hysteresisSlider = document.getElementById('hysteresisSlider');
+    const hysteresisValue = document.getElementById('hysteresisValue');
+
+    // Current device IP - prioritize server-provided IP from telemetry, fallback to localStorage
+    const serverDeviceIp = '{{ device.last_ip|default:"" }}';
+    let currentDeviceIp = serverDeviceIp || localStorage.getItem('thermostat_device_ip_{{ device.id }}') || '';
+    
+    // Initialize input with IP (server value already set via template, but ensure localStorage fallback works)
+    if (!serverDeviceIp && currentDeviceIp && deviceIpInput) {
+      deviceIpInput.value = currentDeviceIp;
+    }
+
+    // Update slider display values
+    function updateSliderDisplays() {
+      if (setpointSlider && setpointValue) {
+        setpointValue.textContent = parseFloat(setpointSlider.value).toFixed(1);
+      }
+      if (hysteresisSlider && hysteresisValue) {
+        hysteresisValue.textContent = parseFloat(hysteresisSlider.value).toFixed(1);
+      }
+    }
+
+    // Bind slider events
+    if (setpointSlider) {
+      setpointSlider.addEventListener('input', updateSliderDisplays);
+    }
+    if (hysteresisSlider) {
+      hysteresisSlider.addEventListener('input', updateSliderDisplays);
+    }
+
+    // Show status message
+    function showStatus(message, type) {
+      if (!configStatus) return;
+      configStatus.textContent = message;
+      configStatus.className = 'text-muted small ' + type;
+    }
+
+    // Update connection status badge
+    function setConnectionStatus(connected, message) {
+      if (!connectionStatus) return;
+      if (connected) {
+        connectionStatus.innerHTML = '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Connected</span>';
+        if (configControls) {
+          configControls.style.opacity = '1';
+          configControls.style.pointerEvents = 'auto';
+          configControls.classList.add('enabled');
+        }
+      } else {
+        connectionStatus.innerHTML = `<span class="badge bg-secondary">${message || 'Not connected'}</span>`;
+        if (configControls && !message) {
+          configControls.style.opacity = '0.5';
+          configControls.style.pointerEvents = 'none';
+          configControls.classList.remove('enabled');
+        }
+      }
+    }
+
+    // Fetch current config from device (no auth required - local network only)
+    async function fetchConfig() {
+      const ip = deviceIpInput ? deviceIpInput.value.trim() : '';
+      if (!ip) {
+        showStatus('Please enter the device IP address', 'error');
+        return;
+      }
+
+      // Validate IP format
+      const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+      if (!ipPattern.test(ip)) {
+        showStatus('Invalid IP address format', 'error');
+        return;
+      }
+
+      // Save IP for future use
+      localStorage.setItem('thermostat_device_ip_{{ device.id }}', ip);
+      currentDeviceIp = ip;
+
+      setConnectionStatus(false, 'Connecting...');
+      showStatus('Fetching configuration...', 'loading');
+
+      try {
+        const response = await fetch(`http://${ip}/api/config`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          },
+          mode: 'cors'
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Fetched config:', data);
+
+        // Update sliders with fetched values
+        if (data.setpoint_c !== undefined && setpointSlider) {
+          setpointSlider.value = data.setpoint_c;
+        }
+        if (data.hysteresis_c !== undefined && hysteresisSlider) {
+          hysteresisSlider.value = data.hysteresis_c;
+        }
+        updateSliderDisplays();
+
+        setConnectionStatus(true);
+        showStatus('Configuration loaded successfully', 'success');
+
+      } catch (err) {
+        console.error('Fetch config error:', err);
+        setConnectionStatus(false, 'Connection failed');
+        
+        if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+          showStatus('Cannot reach device. Check IP and network connection.', 'error');
+        } else {
+          showStatus(`Error: ${err.message}`, 'error');
+        }
+      }
+    }
+
+    // Apply config to device
+    async function applyConfig() {
+      if (!currentDeviceIp) {
+        showStatus('Please fetch config first to establish connection', 'error');
+        return;
+      }
+
+      const setpoint = parseFloat(setpointSlider.value);
+      const hysteresis = parseFloat(hysteresisSlider.value);
+
+      showStatus('Applying configuration...', 'loading');
+
+      try {
+        const response = await fetch(`http://${currentDeviceIp}/api/config`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          mode: 'cors',
+          body: JSON.stringify({
+            setpoint_c: setpoint,
+            hysteresis_c: hysteresis
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Config applied:', data);
+
+        // Update displays with confirmed values
+        if (data.setpoint_c !== undefined && setpointSlider) {
+          setpointSlider.value = data.setpoint_c;
+        }
+        if (data.hysteresis_c !== undefined && hysteresisSlider) {
+          hysteresisSlider.value = data.hysteresis_c;
+        }
+        updateSliderDisplays();
+
+        showStatus(`✓ Applied: Setpoint ${data.setpoint_c}°C, Hysteresis ±${data.hysteresis_c}°C`, 'success');
+
+      } catch (err) {
+        console.error('Apply config error:', err);
+        showStatus(`Error: ${err.message}`, 'error');
+      }
+    }
+
+    // Bind button events
+    if (btnFetch) {
+      btnFetch.addEventListener('click', fetchConfig);
+    }
+    if (btnApply) {
+      btnApply.addEventListener('click', applyConfig);
+    }
+
+    // Enter key in IP input triggers fetch
+    if (deviceIpInput) {
+      deviceIpInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          fetchConfig();
+        }
+      });
+    }
+
+    // Initialize displays
+    updateSliderDisplays();
+
   })();
   </script>
 {% endblock %}

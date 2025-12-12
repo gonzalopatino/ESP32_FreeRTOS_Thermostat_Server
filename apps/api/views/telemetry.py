@@ -209,8 +209,11 @@ def ingest_telemetry(request):
     # 5) Optional device timestamp
     device_ts_raw = data.get("timestamp")
     device_ts = parse_datetime(device_ts_raw) if device_ts_raw else None
+    
+    # 6) Optional device IP address (for remote configuration)
+    device_ip = data.get("device_ip")
 
-    # 6) Persist snapshot; linked to this device
+    # 7) Persist snapshot; linked to this device
     snapshot = TelemetrySnapshot.objects.create(
         device_id=device.serial_number,
         mode=data["mode"],
@@ -224,9 +227,13 @@ def ingest_telemetry(request):
         raw_payload=data,
     )
 
-    # Update device.last_seen for dashboards
+    # Update device.last_seen and last_ip for dashboards and remote config
     device.last_seen = now()
-    device.save(update_fields=["last_seen"])
+    update_fields = ["last_seen"]
+    if device_ip:
+        device.last_ip = device_ip
+        update_fields.append("last_ip")
+    device.save(update_fields=update_fields)
     
     # Update cached storage usage (increment by estimated row size)
     # Full recalculation happens periodically or on data management page
