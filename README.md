@@ -43,6 +43,13 @@ The ThermostatRTOS Platform Backend is a Django-based REST API and web dashboard
 - **CSV Export**: Export telemetry data for external analysis
 - **Storage Quotas**: Per-user storage limits with tiered plans
 
+### Remote Configuration
+- **Local Device API**: Configure thermostat directly via ESP32's local HTTP API
+- **Automatic IP Detection**: Device IP addresses auto-detected from telemetry
+- **Setpoint Control**: Remotely adjust temperature setpoint (15-28°C)
+- **Hysteresis Control**: Adjust deadband from dashboard (0.1-2.0°C)
+- **Mode Control**: Switch between OFF, HEAT, COOL, and AUTO modes
+
 ### Monitoring & Alerts
 - **Real-time Charts**: Live temperature monitoring with Chart.js
 - **Temperature Alerts**: Configurable high/low threshold email notifications
@@ -181,6 +188,13 @@ Users authenticate via session cookies after login.
 | `POST` | `/api/telemetry/ingest/` | Submit telemetry (device auth) |
 | `GET` | `/api/telemetry/query/` | Query telemetry data |
 | `GET` | `/health/` | Health check |
+
+#### ESP32 Local API (accessed directly on device)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `http://<device-ip>/api/config` | Get current thermostat config |
+| `POST` | `http://<device-ip>/api/config` | Update setpoint, hysteresis, mode |
 
 ---
 

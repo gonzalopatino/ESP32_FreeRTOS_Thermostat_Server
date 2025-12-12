@@ -8,7 +8,7 @@
 |----------------------|---|
 | **Project Name** | ThermostatRTOS Platform |
 | **Document Type** | Software Design Document (SDD) |
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Author** | Gonzalo Patino |
 | **Institution** | Southern New Hampshire University |
 | **Date** | December 2025 |
@@ -38,6 +38,7 @@
    - 5.1 [User Interface](#51-user-interface)
    - 5.2 [API Interface](#52-api-interface)
    - 5.3 [Device Communication Interface](#53-device-communication-interface)
+   - 5.4 [Remote Configuration Interface](#54-remote-configuration-interface)
 6. [Security Design](#6-security-design)
    - 6.1 [Authentication](#61-authentication)
    - 6.2 [Authorization](#62-authorization)
@@ -310,6 +311,7 @@ class Device(models.Model):
     name = models.CharField(max_length=128, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     last_seen = models.DateTimeField(null=True, blank=True)
+    last_ip = models.GenericIPAddressField(null=True, blank=True)  # Auto-detected from telemetry
 ```
 
 #### TelemetrySnapshot Model
@@ -416,6 +418,7 @@ Authorization: Device ESP32-001:abc123...
     "humidity_percent": 45.0,
     "hysteresis_c": 0.5,
     "output": "HEAT_ON",
+    "device_ip": "192.168.1.100",
     "timestamp": "2025-12-08T10:30:00Z"
 }
 ```
@@ -448,13 +451,68 @@ Authorization: Device ESP32-001:abc123...
      │                                                    │
      │  4. POST /api/telemetry/ingest/                    │
      │     Authorization: Device SN:KEY                   │
+     │     Body includes: device_ip for auto-detection    │
      │  ─────────────────────────────────────────────▶   │
      │                                                    │
-     │  5. Backend hashes key, validates                  │
+     │  5. Backend stores IP, hashes key, validates       │
      │  ◀─────────────────────────────────────────────   │
      │     200 OK / 403 Forbidden                         │
      │                                                    │
 ```
+
+### 5.4 Remote Configuration Interface
+
+The dashboard communicates directly with ESP32 devices over the local network for real-time configuration changes.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                  Remote Configuration Flow                           │
+└─────────────────────────────────────────────────────────────────────┘
+
+   Dashboard                    ESP32 Device
+     │                              │
+     │  1. User selects device      │
+     │     (IP auto-detected from   │
+     │      telemetry or manual)    │
+     │                              │
+     │  2. GET /api/config          │
+     │  ───────────────────────────▶│
+     │                              │
+     │  3. Current config response  │
+     │  ◀───────────────────────────│
+     │     {setpoint, hysteresis,   │
+     │      mode}                   │
+     │                              │
+     │  4. User adjusts values      │
+     │                              │
+     │  5. POST /api/config         │
+     │     {setpoint_c: 23.5,       │
+     │      hysteresis_c: 0.8,      │
+     │      mode: "AUTO"}           │
+     │  ───────────────────────────▶│
+     │                              │
+     │  6. Device applies config    │
+     │     (NVS persistence)        │
+     │  ◀───────────────────────────│
+     │     {status: "ok", ...}      │
+     │                              │
+```
+
+#### ESP32 Local API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/config` | Retrieve current thermostat configuration |
+| `POST` | `/api/config` | Update setpoint, hysteresis, and/or mode |
+| `OPTIONS` | `/api/config` | CORS preflight support |
+
+#### Configuration Parameters
+
+| Parameter | Type | Range | Description |
+|-----------|------|-------|-------------|
+| `setpoint_c` | float | 15.0 - 28.0 | Target temperature in Celsius |
+| `hysteresis_c` | float | 0.1 - 2.0 | Deadband width in Celsius |
+| `mode` | string | OFF, HEAT, COOL, AUTO | Operating mode |
 
 ---
 
@@ -599,6 +657,7 @@ python manage.py check --deploy
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | Dec 2025 | Gonzalo Patino | Initial release |
+| 1.1 | Dec 2025 | Gonzalo Patino | Added Remote Configuration Interface (5.4), ESP32 Local API, device_ip telemetry field |
 
 ---
 
