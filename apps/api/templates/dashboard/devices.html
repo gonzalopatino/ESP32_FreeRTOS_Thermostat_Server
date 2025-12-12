@@ -505,7 +505,8 @@
               <th scope="col">Status</th>
               <th scope="col">Serial number</th>
               <th scope="col">Name</th>
-              <th scope="col">Created at</th>
+              <th scope="col">Current Temp</th>
+              <th scope="col">Last Updated</th>
               <th scope="col">Active keys</th>
             </tr>
           </thead>
@@ -527,7 +528,12 @@
                   </a>
                 </td>
                 <td>{{ device.name|default:"(unnamed)" }}</td>
-                <td>{{ device.created_at }}</td>
+                <td class="device-temp-cell" data-serial="{{ device.serial_number }}">
+                  <span class="temp-value">--</span>
+                </td>
+                <td class="device-lastupdated-cell" data-serial="{{ device.serial_number }}">
+                  <span class="lastupdated-value">--</span>
+                </td>
                 <td>{{ device.active_key_count }}</td>
               </tr>
             {% endfor %}
@@ -610,25 +616,61 @@
       const data = await response.json();
       const devices = data.results || [];
       
-      // Build a map of serial_number -> last_seen
+      // Build a map of serial_number -> device data
       const deviceMap = {};
       devices.forEach(d => {
-        deviceMap[d.serial_number] = d.last_seen;
+        deviceMap[d.serial_number] = {
+          last_seen: d.last_seen,
+          current_temp: d.current_temp
+        };
       });
       
       // Update each cell based on fresh data
-      const cells = document.querySelectorAll('.device-status-cell');
+      const statusCells = document.querySelectorAll('.device-status-cell');
+      const tempCells = document.querySelectorAll('.device-temp-cell');
+      const lastUpdatedCells = document.querySelectorAll('.device-lastupdated-cell');
       let onlineCount = 0;
       
-      cells.forEach(cell => {
+      statusCells.forEach(cell => {
         const serialNumber = cell.dataset.serial;
-        const lastSeenStr = deviceMap[serialNumber];
+        const deviceData = deviceMap[serialNumber] || {};
+        const lastSeenStr = deviceData.last_seen;
         
         // Update the data attribute with fresh value
         cell.dataset.lastSeen = lastSeenStr || '';
         
         if (updateCellStatus(cell, lastSeenStr)) {
           onlineCount++;
+        }
+      });
+      
+      // Update temperature cells
+      tempCells.forEach(cell => {
+        const serialNumber = cell.dataset.serial;
+        const deviceData = deviceMap[serialNumber] || {};
+        const tempEl = cell.querySelector('.temp-value');
+        if (tempEl) {
+          if (deviceData.current_temp !== null && deviceData.current_temp !== undefined) {
+            tempEl.textContent = deviceData.current_temp.toFixed(1) + '°C';
+            tempEl.style.color = '#10b981';
+          } else {
+            tempEl.textContent = '--';
+            tempEl.style.color = '';
+          }
+        }
+      });
+      
+      // Update last updated cells
+      lastUpdatedCells.forEach(cell => {
+        const serialNumber = cell.dataset.serial;
+        const deviceData = deviceMap[serialNumber] || {};
+        const lastUpdatedEl = cell.querySelector('.lastupdated-value');
+        if (lastUpdatedEl) {
+          if (deviceData.last_seen) {
+            lastUpdatedEl.textContent = formatTimeAgo(new Date(deviceData.last_seen));
+          } else {
+            lastUpdatedEl.textContent = 'Never';
+          }
         }
       });
       

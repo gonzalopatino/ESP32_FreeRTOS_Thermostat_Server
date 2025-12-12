@@ -22,7 +22,7 @@ import json
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.views.decorators.http import require_POST
 
-from ..models import Device, DeviceApiKey
+from ..models import Device, DeviceApiKey, TelemetrySnapshot
 from ..ratelimits import ratelimit_key_rotation, ratelimit_register
 from .helpers import api_login_required
 
@@ -128,7 +128,9 @@ def list_devices(request):
                 "id": 1,
                 "serial_number": "SN-ESP32-THERMO-001",
                 "name": "Living Room Thermostat",
-                "created_at": "...iso8601..."
+                "created_at": "...iso8601...",
+                "last_seen": "...iso8601...",
+                "current_temp": 23.5
             },
             ...
         ]
@@ -138,6 +140,15 @@ def list_devices(request):
 
     results = []
     for d in devices:
+        # Get latest telemetry for current temperature
+        latest_telemetry = TelemetrySnapshot.objects.filter(
+            device_id=d.serial_number
+        ).order_by('-server_ts').first()
+        
+        current_temp = None
+        if latest_telemetry:
+            current_temp = latest_telemetry.temp_inside_c
+        
         results.append(
             {
                 "id": d.id,
@@ -145,6 +156,7 @@ def list_devices(request):
                 "name": d.name,
                 "created_at": d.created_at.isoformat() if d.created_at else None,
                 "last_seen": d.last_seen.isoformat() if d.last_seen else None,
+                "current_temp": current_temp,
             }
         )
 
