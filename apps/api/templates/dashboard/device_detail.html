@@ -184,6 +184,193 @@
     font-size: 24px;
   }
 }
+
+/* ==========================================================================
+   Connection Status Widget - Compact Futuristic Design
+   ========================================================================== */
+
+.connection-status-widget {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(14, 165, 233, 0.05) 100%);
+  border-radius: var(--tp-radius);
+  border: 1px solid var(--tp-border);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.connection-status-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.connection-flow-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.conn-node {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--tp-card-bg);
+  border: 1.5px solid var(--tp-border);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.conn-node svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--tp-text-muted);
+  transition: all 0.3s ease;
+}
+
+.conn-node.active {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.conn-node.active svg {
+  stroke: #10b981;
+}
+
+.conn-node.offline {
+  border-color: #ef4444;
+  opacity: 0.5;
+}
+
+.conn-node.offline svg {
+  stroke: #ef4444;
+}
+
+/* Connection Line */
+.conn-line {
+  width: 32px;
+  height: 3px;
+  background: var(--tp-border);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.conn-line-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #10b981, #22d3ee);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.conn-line.active .conn-line-fill {
+  width: 100%;
+}
+
+.conn-line.active::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #10b981;
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 0 8px #10b981;
+  animation: dataFlow 1.2s ease-in-out infinite;
+}
+
+@keyframes dataFlow {
+  0% { left: 0; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: calc(100% - 6px); opacity: 0; }
+}
+
+/* Status Badge */
+.conn-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.conn-status-badge.online {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.conn-status-badge.offline {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.conn-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.conn-status-badge.online .conn-status-dot {
+  background: #10b981;
+  animation: statusGlow 2s ease-in-out infinite;
+}
+
+.conn-status-badge.offline .conn-status-dot {
+  background: #ef4444;
+}
+
+@keyframes statusGlow {
+  0%, 100% { box-shadow: 0 0 4px #10b981; }
+  50% { box-shadow: 0 0 12px #10b981, 0 0 20px rgba(16, 185, 129, 0.4); }
+}
+
+/* Last Seen Text */
+.conn-last-seen {
+  font-size: 0.7rem;
+  color: var(--tp-text-muted);
+  white-space: nowrap;
+}
+
+/* Offline Tip */
+.conn-offline-tip {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--tp-radius-sm);
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--tp-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.conn-offline-tip svg {
+  width: 16px;
+  height: 16px;
+  stroke: #ef4444;
+  flex-shrink: 0;
+}
+
+.conn-offline-tip code {
+  background: rgba(0, 0, 0, 0.15);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
 </style>
 
 <!-- SVG Gradients -->
@@ -235,6 +422,7 @@
     id="device-detail-root"
     data-device-serial="{{ device.serial_number }}"
     data-telemetry-url="{% url 'telemetry_query' %}"
+    data-last-seen="{% if device.last_seen %}{{ device.last_seen|date:'c' }}{% endif %}"
   ></div>
 
   <!-- Tabs -->
@@ -292,70 +480,6 @@
       aria-labelledby="main-tab"
       tabindex="0"
     >
-      <!-- Date range controls -->
-      <div class="card mb-3">
-        <div class="card-body">
-          <div class="row g-3 align-items-end">
-            <div class="col-md-4">
-              <label for="fromDate" class="form-label">From</label>
-              <input
-                type="datetime-local"
-                id="fromDate"
-                class="form-control"
-                placeholder="yyyy-mm-dd --:-- --"
-              />
-            </div>
-            <div class="col-md-4">
-              <label for="toDate" class="form-label">To</label>
-              <input
-                type="datetime-local"
-                id="toDate"
-                class="form-control"
-                placeholder="yyyy-mm-dd --:-- --"
-              />
-            </div>
-            <div class="col-md-4 d-flex align-items-end">
-              <div class="d-flex flex-column w-100">
-                <button
-                  id="applyRangeBtn"
-                  class="btn btn-primary mb-1"
-                  type="button"
-                >
-                  Apply range
-                </button>
-                <small class="text-muted">
-                  If both fields are empty, the dashboard shows the last
-                  24 hours of data.
-                </small>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Export CSV button - uses hidden form so JS can inject current range -->
-      <div class="mb-3">
-        <form
-          id="exportCsvForm"
-          method="get"
-          action="{% url 'telemetry_export_csv' %}"
-          class="d-inline"
-        >
-          {# Device id is the serial that TelemetrySnapshot.device_id uses #}
-          <input type="hidden" name="device_id" value="{{ device.serial_number }}">
-          {# These will be filled in by JS from the From/To date pickers #}
-          <input type="hidden" name="start" id="csvStart">
-          <input type="hidden" name="end" id="csvEnd">
-          <!-- NEW: browser timezone name, e.g. America/Vancouver -->
-          <input type="hidden" name="tz" id="csvTz">
-          
-          <button type="submit" class="btn btn-outline-secondary btn-sm">
-            Export history as CSV
-          </button>
-        </form>
-      </div>
-
-
       <!-- Realtime status card -->
       <div class="card mb-3" id="realtime-card">
         <div class="card-body d-flex justify-content-between align-items-center">
@@ -390,6 +514,65 @@
         </div>
       </div>
 
+      <!-- Connection Status Widget (Compact) -->
+      <div class="connection-status-widget" id="connection-status-widget">
+        <div class="connection-status-inner">
+          <div class="connection-flow-compact" id="connection-flow">
+            <!-- WiFi Node -->
+            <div class="conn-node" id="node-wifi" title="WiFi">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                <circle cx="12" cy="20" r="1"/>
+              </svg>
+            </div>
+            
+            <!-- Line 1 -->
+            <div class="conn-line" id="conn-line-1">
+              <div class="conn-line-fill"></div>
+            </div>
+            
+            <!-- Device Node -->
+            <div class="conn-node" id="node-device" title="Thermostat">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>
+              </svg>
+            </div>
+            
+            <!-- Line 2 -->
+            <div class="conn-line" id="conn-line-2">
+              <div class="conn-line-fill"></div>
+            </div>
+            
+            <!-- Cloud Node -->
+            <div class="conn-node" id="node-cloud" title="Cloud">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+              </svg>
+            </div>
+          </div>
+          
+          <div class="d-flex align-items-center gap-3">
+            <span class="conn-last-seen" id="connection-last-updated">--</span>
+            <span class="conn-status-badge offline" id="connection-badge">
+              <span class="conn-status-dot"></span>
+              <span id="connection-badge-text">Checking</span>
+            </span>
+          </div>
+        </div>
+        
+        <!-- Offline Tip -->
+        <div class="conn-offline-tip" id="offline-message" style="display: none;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span><strong>Dev Tip:</strong> Use <code>0.0.0.0</code> instead of <code>localhost</code> when running locally.</span>
+        </div>
+      </div>
+
       <!-- Realtime temperature chart -->
       <div class="card mb-4 chart-card">
         <div class="card-body">
@@ -420,6 +603,46 @@
         </div>
       </div>
 
+      <!-- Date range controls -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+              <label for="fromDate" class="form-label">From</label>
+              <input
+                type="datetime-local"
+                id="fromDate"
+                class="form-control"
+                placeholder="yyyy-mm-dd --:-- --"
+              />
+            </div>
+            <div class="col-md-4">
+              <label for="toDate" class="form-label">To</label>
+              <input
+                type="datetime-local"
+                id="toDate"
+                class="form-control"
+                placeholder="yyyy-mm-dd --:-- --"
+              />
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <div class="d-flex flex-column w-100">
+                <button
+                  id="applyRangeBtn"
+                  class="btn btn-primary mb-1"
+                  type="button"
+                >
+                  Apply range
+                </button>
+                <small class="text-muted">
+                  If both fields are empty, shows last 24 hours.
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Temperature history chart -->
       <div class="card mb-4 chart-card">
         <div class="card-body">
@@ -443,8 +666,25 @@
             <p class="text-muted small mb-0">
               <i class="bi bi-calendar-range me-1"></i>Based on selected date range
             </p>
-            <div id="historyChartLegendHint" class="chart-legend-hint small d-none">
-              <span class="text-danger"><i class="bi bi-dash-lg"></i> Red = Device offline</span>
+            <div class="d-flex align-items-center gap-2">
+              <div id="historyChartLegendHint" class="chart-legend-hint small d-none">
+                <span class="text-danger"><i class="bi bi-dash-lg"></i> Red = Device offline</span>
+              </div>
+              <!-- Export CSV button -->
+              <form
+                id="exportCsvForm"
+                method="get"
+                action="{% url 'telemetry_export_csv' %}"
+                class="d-inline"
+              >
+                <input type="hidden" name="device_id" value="{{ device.serial_number }}">
+                <input type="hidden" name="start" id="csvStart">
+                <input type="hidden" name="end" id="csvEnd">
+                <input type="hidden" name="tz" id="csvTz">
+                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                  <i class="bi bi-download me-1"></i>Export CSV
+                </button>
+              </form>
             </div>
           </div>
         </div>
@@ -930,6 +1170,125 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="{% static 'api/js/device_detail.js' %}?v=20251208b"></script>
   
+  <script>
+  // Connection Status Widget Controller
+  (function() {
+    const ONLINE_THRESHOLD_MS = 20 * 1000; // 20 seconds (ESP32 sends every 15s)
+    
+    const root = document.getElementById('device-detail-root');
+    const badge = document.getElementById('connection-badge');
+    const badgeText = document.getElementById('connection-badge-text');
+    const nodeWifi = document.getElementById('node-wifi');
+    const nodeDevice = document.getElementById('node-device');
+    const nodeCloud = document.getElementById('node-cloud');
+    const connLine1 = document.getElementById('conn-line-1');
+    const connLine2 = document.getElementById('conn-line-2');
+    const lastUpdatedEl = document.getElementById('connection-last-updated');
+    const offlineMessage = document.getElementById('offline-message');
+    
+    let lastSeenDate = null;
+    
+    function parseLastSeen() {
+      const lastSeenStr = root?.dataset?.lastSeen;
+      if (lastSeenStr && lastSeenStr !== 'None' && lastSeenStr !== '') {
+        lastSeenDate = new Date(lastSeenStr);
+      }
+    }
+    
+    function formatTimeAgo(date) {
+      if (!date) return 'Never';
+      const now = new Date();
+      const diffMs = now - date;
+      const diffSec = Math.floor(diffMs / 1000);
+      const diffMin = Math.floor(diffSec / 60);
+      const diffHour = Math.floor(diffMin / 60);
+      const diffDay = Math.floor(diffHour / 24);
+
+      if (diffSec < 10) return 'Just now';
+      if (diffSec < 60) return `${diffSec} seconds ago`;
+      if (diffMin < 60) return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`;
+      if (diffHour < 24) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
+      if (diffDay < 7) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
+      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    }
+    
+    function updateConnectionStatus() {
+      const now = new Date();
+      let isOnline = false;
+      
+      if (lastSeenDate) {
+        const diffMs = now - lastSeenDate;
+        isOnline = diffMs < ONLINE_THRESHOLD_MS;
+      }
+      
+      // Update badge
+      if (isOnline) {
+        badge.classList.remove('offline');
+        badge.classList.add('online');
+        badgeText.textContent = 'Online';
+      } else {
+        badge.classList.remove('online');
+        badge.classList.add('offline');
+        badgeText.textContent = 'Offline';
+      }
+      
+      // Update nodes and lines
+      if (isOnline) {
+        nodeWifi.classList.add('active');
+        nodeDevice.classList.add('active');
+        nodeCloud.classList.add('active');
+        nodeWifi.classList.remove('offline');
+        nodeDevice.classList.remove('offline');
+        nodeCloud.classList.remove('offline');
+        connLine1?.classList.add('active');
+        connLine2?.classList.add('active');
+      } else {
+        nodeWifi.classList.remove('active');
+        nodeDevice.classList.remove('active');
+        nodeCloud.classList.remove('active');
+        nodeDevice.classList.add('offline');
+        connLine1?.classList.remove('active');
+        connLine2?.classList.remove('active');
+      }
+      
+      // Update last updated text
+      if (lastSeenDate) {
+        lastUpdatedEl.textContent = formatTimeAgo(lastSeenDate);
+      } else {
+        lastUpdatedEl.textContent = 'Never';
+      }
+      
+      // Show/hide offline message
+      if (offlineMessage) {
+        offlineMessage.style.display = isOnline ? 'none' : 'flex';
+      }
+    }
+    
+    // Listen for telemetry updates from device_detail.js
+    // This hooks into the real-time card updates
+    const rtTimestamp = document.getElementById('rt-timestamp');
+    if (rtTimestamp) {
+      const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.type === 'childList' || mutation.type === 'characterData') {
+            // Real-time update happened, device is online
+            lastSeenDate = new Date();
+            updateConnectionStatus();
+          }
+        });
+      });
+      observer.observe(rtTimestamp, { childList: true, characterData: true, subtree: true });
+    }
+    
+    // Initial setup
+    parseLastSeen();
+    updateConnectionStatus();
+    
+    // Update every 10 seconds
+    setInterval(updateConnectionStatus, 10000);
+  })();
+  </script>
+
   <script>
   // Email Alert Dials Controller
   (function() {

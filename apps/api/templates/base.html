@@ -8,10 +8,10 @@
     <meta name="description" content="ThermoPatinoVerse - Smart IoT Thermostat Platform for monitoring and controlling your devices">
     <meta name="theme-color" content="#0f172a">
     
-    {# Prevent flash of wrong theme #}
+    {# Prevent flash of wrong theme - Default to dark #}
     <script>
       (function() {
-        const theme = localStorage.getItem('theme') || 'light';
+        const theme = localStorage.getItem('theme') || 'dark';
         document.documentElement.setAttribute('data-theme', theme);
       })();
     </script>

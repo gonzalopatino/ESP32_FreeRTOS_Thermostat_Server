@@ -1,10 +1,10 @@
 /* ==========================================================================
    ThermoPatinoVerse - Modern IoT Dashboard Theme
-   Professional dark/light mode with smooth transitions
+   Futuristic dark mode with green accents
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   CSS Custom Properties - Light Mode (Default)
+   CSS Custom Properties - Light Mode
    -------------------------------------------------------------------------- */
 :root {
   /* Primary brand colors - Modern teal/cyan IoT feel */
@@ -76,29 +76,45 @@
 }
 
 /* --------------------------------------------------------------------------
-   Dark Mode
+   Dark Mode - Futuristic IoT with Green Accents
    -------------------------------------------------------------------------- */
 [data-theme="dark"] {
-  --tp-bg: #0f172a;               /* Slate 900 */
-  --tp-bg-secondary: #1e293b;     /* Slate 800 */
-  --tp-card-bg: #1e293b;
-  --tp-card-bg-hover: #334155;
+  /* Primary - Shift to green for IoT feel */
+  --tp-primary: #10b981;          /* Emerald green */
+  --tp-primary-hover: #059669;
+  --tp-primary-light: #34d399;
+  --tp-primary-rgb: 16, 185, 129;
   
-  --tp-border: #334155;           /* Slate 700 */
+  /* Keep cyan as secondary */
+  --tp-secondary: #22d3ee;        /* Cyan */
+  --tp-secondary-hover: #06b6d4;
+  
+  /* Backgrounds - Deep dark */
+  --tp-bg: #0a0f1a;               /* Near black */
+  --tp-bg-secondary: #111827;     /* Dark gray */
+  --tp-card-bg: #1a1f2e;
+  --tp-card-bg-hover: #242938;
+  
+  --tp-border: #2d3748;           /* Slate 700 */
   --tp-border-light: #1e293b;
   
   --tp-text: #f1f5f9;             /* Slate 100 */
   --tp-text-secondary: #cbd5e1;   /* Slate 300 */
   --tp-text-muted: #64748b;       /* Slate 500 */
   
-  --tp-navbar-bg: #020617;        /* Slate 950 */
+  --tp-navbar-bg: #050810;        /* Almost black */
   
-  /* Darker shadows for dark mode */
-  --tp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --tp-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
-  --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --tp-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-  --tp-shadow-glow: 0 0 30px rgba(14, 165, 233, 0.2);
+  /* Gradients - Green focused */
+  --tp-gradient-primary: linear-gradient(135deg, #10b981 0%, #22d3ee 100%);
+  --tp-gradient-accent: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  --tp-gradient-dark: linear-gradient(135deg, #111827 0%, #0a0f1a 100%);
+  
+  /* Shadows with glow */
+  --tp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --tp-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --tp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
+  --tp-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  --tp-shadow-glow: 0 0 30px rgba(16, 185, 129, 0.25);
 }
 
 /* --------------------------------------------------------------------------
